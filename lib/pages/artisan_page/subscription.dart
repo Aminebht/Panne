@@ -1,26 +1,31 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:panne_auto/konnect/konnect_api_service.dart';
 
-void main() => runApp(SubscriptionApp());
 
-class SubscriptionApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: SubscriptionScreen(),
-    );
-  }
-}
 
 class SubscriptionScreen extends StatefulWidget {
+  final String DropdownValue;
+  SubscriptionScreen({required this.DropdownValue});
   @override
   _SubscriptionScreenState createState() => _SubscriptionScreenState();
 }
 
 class _SubscriptionScreenState extends State<SubscriptionScreen> {
   int selectedIndex = 1; // Default to 6 months
-  String selectedPrice = '100 TND'; // Variable to hold the selected price
-
+  final KonnectApiService _apiService = KonnectApiService();
+  String selectedMethod = '';
+  int amount = 100000; // Example amount // Variable to hold the selected price
+void _initiatePayment() async {
+    try {
+      final response = await _apiService.sendPaymentRequest(
+        context: context,
+        amount: amount,
+        dropdownValue: widget.DropdownValue,
+      );
+    } catch (e) {
+      print("Error: $e");
+    }
+  }
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -68,7 +73,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
 
                 // Title and Description
                 Text(
-                  AppLocalizations.of(context)!.subscription,
+                  'Subscription',
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -79,7 +84,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 65.0),
                   child: Text(
-                    AppLocalizations.of(context)!.subscription_description,
+                    'Purchase the subscription for artisans and open up your horizons to a new clientele and more flexible schedules',
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -94,11 +99,11 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildSubscriptionOption(0, '1 '+AppLocalizations.of(context)!.month, '20 '+AppLocalizations.of(context)!.currency, isPopular: false),
+                    _buildSubscriptionOption(0, '1 month', '20 TND', isPopular: false),
                     SizedBox(width: 10),
-                    _buildSubscriptionOption(1, '6 '+AppLocalizations.of(context)!.month, '100 '+AppLocalizations.of(context)!.currency, isPopular: true),
+                    _buildSubscriptionOption(1, '6 months', '100 TND', isPopular: true),
                     SizedBox(width: 10),
-                    _buildSubscriptionOption(2, '12 '+AppLocalizations.of(context)!.month, '160 '+AppLocalizations.of(context)!.currency, isPopular: false),
+                    _buildSubscriptionOption(2, '12 months', '160 TND', isPopular: false),
                   ],
                 ),
                 SizedBox(height: 30),
@@ -106,9 +111,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                 // Pay Button
                 ElevatedButton(
                   onPressed: () {
-                    // Action for pay button based on selected option
-                    print("Selected subscription: ${selectedIndex == 0 ? '1 month' : selectedIndex == 1 ? '6 months' : '12 months'}");
-                    print("Selected price: $selectedPrice"); // Print the selected price
+                     _initiatePayment(); // Print the selected price
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Color.fromRGBO(226, 145, 0, 1),
@@ -118,7 +121,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                     ),
                   ),
                   child: Text(
-                    AppLocalizations.of(context)!.pay,
+                    'Next',
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.white,
@@ -139,7 +142,8 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
       onTap: () {
         setState(() {
           selectedIndex = index; // Update selected index on tap
-          selectedPrice = price; // Update the selected price based on the option tapped
+          amount= int.parse(price.split(' ')[0]) * 1000;
+; // Update the selected price based on the option tapped
         });
       },
       child: Stack(
@@ -187,7 +191,7 @@ class _SubscriptionScreenState extends State<SubscriptionScreen> {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
-                  AppLocalizations.of(context)!.popular,
+                  'POPULAR',
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,

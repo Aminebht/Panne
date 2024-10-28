@@ -815,7 +815,7 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
                                             // Navigate to the Subscription page
                                             Navigator.push(
                                               context,
-                                              MaterialPageRoute(builder: (context) => SubscriptionScreen()), // Replace with the correct import if necessary
+                                              MaterialPageRoute(builder: (context) => SubscriptionScreen(DropdownValue:dropdownValue)), // Replace with the correct import if necessary
                                             );
                                           },
                                       child: _isLoading
