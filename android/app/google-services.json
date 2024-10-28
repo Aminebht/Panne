@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "1027338125426",
+    "project_id": "panneauto-b3561",
+    "storage_bucket": "panneauto-b3561.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1027338125426:android:7617ad6b22be9ded7f02eb",
+        "android_client_info": {
+          "package_name": "com.alayadigital.panne_auto"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1027338125426-11hrv2pmmcbjg7t7kdhjhc6u3gvlr7st.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.alayadigital.panne_auto",
+            "certificate_hash": "601544670f6aa8c7cd062601415be5e520c87686"
+          }
+        },
+        {
+          "client_id": "1027338125426-2dsm013p8j40euoa7noclomceu1g4o57.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCAdC7GGolBBNJdx0AjWTq2VljLj_RNr-c"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1027338125426-2dsm013p8j40euoa7noclomceu1g4o57.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
