@@ -62,10 +62,10 @@ android {
 
     signingConfigs {
         release {
-            keyAlias keystoreProperties['keyAlias']
-            keyPassword keystoreProperties['keyPassword']
-            storeFile keystoreProperties['storeFile'] ? file(keystoreProperties['storeFile']) : null
-            storePassword keystoreProperties['storePassword']
+            keyAlias 'your-key-alias'
+            keyPassword '123456'
+            storeFile file('C:/Users/hama/OneDrive/Bureau/Panne App/panne-auto-main/android/keystore.jks')
+            storePassword '123456'
 
         }
     }
