@@ -704,21 +704,45 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
                                   // In your widget:
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 30),
-                                    child: GestureDetector(
-                                       onTap: () {
-                                            // Navigate to the Subscription page
-                                            Navigator.push(
-                                              context,
-                                              MaterialPageRoute(builder: (context) => SubscriptionScreen(DropdownValue:dropdownValue)), // Replace with the correct import if necessary
-                                            );
-                                          },
-                                      child: _isLoading
-                                          ? SpinningImage()
-                                          : MainButton(
-                                              name:
-                                                  AppLocalizations.of(context)!
-                                                      .add_job),
-                                    ),
+                                    child:GestureDetector(
+                                              onTap: () async {
+                                                User? _user = ref.read(firebaseAuthProvider).currentUser;
+
+                                                if (_user != null) {
+                                                  // Fetch job details to check for duplicates
+                                                  var jobSnapshot = await ref
+                                                      .read(firebaseFirestoreProvider)
+                                                      .collection('jobs')
+                                                      .where('user id', isEqualTo: _user.uid)
+                                                      .where('job type', isEqualTo: dropdownValue)
+                                                      .get();
+
+                                                  if (jobSnapshot.docs.isNotEmpty) {
+                                                    // Show toast if job of this type already exists
+                                                    Fluttertoast.showToast(
+                                                      msg: "You already have a job of this type.",
+                                                      toastLength: Toast.LENGTH_SHORT,
+                                                      gravity: ToastGravity.BOTTOM,
+                                                      backgroundColor: Colors.red,
+                                                      textColor: Colors.white,
+                                                    );
+                                                    _descriptionController.clear();
+                                                  } else {
+                                                    // Navigate to Subscription page if no duplicate job is found
+                                                    Navigator.push(
+                                                      context,
+                                                      MaterialPageRoute(
+                                                        builder: (context) => SubscriptionScreen(DropdownValue: dropdownValue),
+                                                      ),
+                                                    );
+                                                  }
+                                                }
+                                              },
+                                              child: _isLoading ? SpinningImage() : MainButton(
+                                                name: AppLocalizations.of(context)!.add_job,
+                                              ),
+                                            ),
+
                                   )
                                 ],
                               ),

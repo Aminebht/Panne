@@ -98,17 +98,7 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
         .where('job type', isEqualTo: widget.dropdownValue)
         .get();
 
-    if (jobSnapshot.docs.isNotEmpty) {
-      Fluttertoast.showToast(
-        msg: "You already have a job of this type.",
-        toastLength: Toast.LENGTH_SHORT,
-        gravity: ToastGravity.BOTTOM,
-        backgroundColor: Colors.red,
-        textColor: Colors.white,
-      );
-      _descriptionController.clear();
-      return;
-    }
+    
 
     LocationPermission permission = await Geolocator.checkPermission();
     while (permission == LocationPermission.denied ||
