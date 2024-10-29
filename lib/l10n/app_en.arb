@@ -65,7 +65,7 @@
   "description_client": "You are looking for providers on the application",
   "subscription":"Subscription",
   "subscription_description":"Purchase the subscription for providers and open up your horizons to a new clientele and more flexible schedules",
-  "pay":"PAY",
+  "next":"Next",
   "popular":"POPULAR",
   "month":"month",
   "currency":"TND"

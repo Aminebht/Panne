@@ -102,19 +102,19 @@ class _RequestPageState extends ConsumerState<RequestPage> {
     ],
   ),
                       
-                      subtitle: Text(data['description']),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          IconButton(
-                            icon: Icon(
-                              Icons.delete,
-                              color: Colors.red[300],
-                            ).animate().shake(),
-                            onPressed: () async {
+  subtitle: Text(data['description']),
+  trailing: Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      IconButton(
+        icon: Icon(
+          Icons.delete,
+          color: Colors.red[300],
+        ).animate().shake(),
+        onPressed: () async {
                               // Delete the job
                               deleteJob(document.id);
-                            },
+        },
                           ),
                         ],
                       ),

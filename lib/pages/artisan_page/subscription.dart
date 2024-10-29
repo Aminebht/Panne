@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:panne_auto/konnect/konnect_api_service.dart';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 
 
 class SubscriptionScreen extends StatefulWidget {
@@ -73,7 +73,7 @@ void _initiatePayment() async {
 
                 // Title and Description
                 Text(
-                  'Subscription',
+                  AppLocalizations.of(context)!.subscription,
                   style: TextStyle(
                     fontSize: 32,
                     fontWeight: FontWeight.bold,
@@ -84,7 +84,7 @@ void _initiatePayment() async {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 65.0),
                   child: Text(
-                    'Purchase the subscription for artisans and open up your horizons to a new clientele and more flexible schedules',
+                    AppLocalizations.of(context)!.subscription_description,
                     textAlign: TextAlign.center,
                     style: TextStyle(
                       color: Colors.white,
@@ -99,11 +99,11 @@ void _initiatePayment() async {
                   mainAxisAlignment: MainAxisAlignment.center,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _buildSubscriptionOption(0, '1 month', '20 TND', isPopular: false),
+                    _buildSubscriptionOption(0, '1 '+AppLocalizations.of(context)!.month, '20 '+AppLocalizations.of(context)!.currency, isPopular: false),
                     SizedBox(width: 10),
-                    _buildSubscriptionOption(1, '6 months', '100 TND', isPopular: true),
+                    _buildSubscriptionOption(1, '6 '+AppLocalizations.of(context)!.month, '100 '+AppLocalizations.of(context)!.currency, isPopular: true),
                     SizedBox(width: 10),
-                    _buildSubscriptionOption(2, '12 months', '160 TND', isPopular: false),
+                    _buildSubscriptionOption(2, '12 '+AppLocalizations.of(context)!.month, '160 '+AppLocalizations.of(context)!.currency, isPopular: false),
                   ],
                 ),
                 SizedBox(height: 30),
@@ -121,7 +121,7 @@ void _initiatePayment() async {
                     ),
                   ),
                   child: Text(
-                    'Next',
+                    AppLocalizations.of(context)!.next,
                     style: TextStyle(
                       fontSize: 18,
                       color: Colors.white,
@@ -191,7 +191,7 @@ void _initiatePayment() async {
                   borderRadius: BorderRadius.circular(15),
                 ),
                 child: Text(
-                  'POPULAR',
+                  AppLocalizations.of(context)!.popular,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 12,
