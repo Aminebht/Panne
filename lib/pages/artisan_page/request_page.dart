@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
 import 'package:panne_auto/componant/spinning_img.dart';
 import 'package:panne_auto/providers/auth_providers.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
@@ -84,12 +85,23 @@ class _RequestPageState extends ConsumerState<RequestPage> {
                     Map<String, dynamic> data =
                         document.data() as Map<String, dynamic>;
                     return ListTile(
-                      title: Text(
+                      title: Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
                         data['job type'],
                         style: GoogleFonts.poppins(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+      if (data['expiry date'] != null)
+      Text(
+        'expires on: ${DateFormat('yyyy-MM-dd').format((data['expiry date'] as Timestamp).toDate())}',
+        style: TextStyle(color: Colors.grey),
+      ),
+    ],
+  ),
+                      
                       subtitle: Text(data['description']),
                       trailing: Row(
                         mainAxisSize: MainAxisSize.min,
