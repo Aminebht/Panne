@@ -83,97 +83,111 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
   }
 
   Future<void> AddJob() async {
-    try {
-      User? _user = ref.read(firebaseAuthProvider).currentUser;
-      DocumentSnapshot _userData = await ref
-          .read(firebaseFirestoreProvider)
-          .collection('users')
-          .doc(_user!.uid)
-          .get();
+  try {
+    User? _user = ref.read(firebaseAuthProvider).currentUser;
+    DocumentSnapshot _userData = await ref
+        .read(firebaseFirestoreProvider)
+        .collection('users')
+        .doc(_user!.uid)
+        .get();
 
-      var jobSnapshot = await ref
-          .read(firebaseFirestoreProvider)
-          .collection('jobs')
-          .where('user id', isEqualTo: _user.uid)
-          .where('job type', isEqualTo: widget.dropdownValue)
-          .get();
+    var jobSnapshot = await ref
+        .read(firebaseFirestoreProvider)
+        .collection('jobs')
+        .where('user id', isEqualTo: _user.uid)
+        .where('job type', isEqualTo: widget.dropdownValue)
+        .get();
 
-      if (jobSnapshot.docs.isNotEmpty) {
-        Fluttertoast.showToast(
-          msg: "You already have a job of this type.",
-          toastLength: Toast.LENGTH_SHORT,
-          gravity: ToastGravity.BOTTOM,
-          backgroundColor: Colors.red,
-          textColor: Colors.white,
-        );
-        _descriptionController.clear();
-        return;
-      }
-
-      LocationPermission permission = await Geolocator.checkPermission();
-      while (permission == LocationPermission.denied ||
-          permission == LocationPermission.deniedForever) {
-        var completer = Completer<void>();
-        showDialog(
-          context: context,
-          builder: (BuildContext context) {
-            return AlertDialog(
-              title: Text('Use your location'),
-              content: Text('We need your location to add the job.'),
-              actions: <Widget>[
-                TextButton(
-                  child: Text('Cancel'),
-                  onPressed: () {
-                    Navigator.of(context).pop();
-                  },
-                ),
-                TextButton(
-                  child: Text('OK'),
-                  onPressed: () async {
-                    Navigator.of(context).pop();
-                    permission = await Geolocator.requestPermission();
-                    if (permission != LocationPermission.denied &&
-                        permission != LocationPermission.deniedForever) {
-                      completer.complete();
-                    }
-                  },
-                ),
-              ],
-            );
-          },
-        );
-        await completer.future;
-      }
-
-      Position position = await Geolocator.getCurrentPosition(
-          desiredAccuracy: LocationAccuracy.high);
-
-      await FirebaseFirestore.instance.collection('users').doc(_user.uid).update({
-        'position': {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-        },
-      });
-
-      await ref.read(firebaseFirestoreProvider).collection('jobs').add({
-        'user id': _user.uid,
-        'user name': _userData['fullName'],
-        'phone number': _userData['phone'],
-        'image url': _userData['image url'],
-        'job type': widget.dropdownValue,
-        'description': _descriptionController.text.trim(),
-        'position': {
-          'latitude': position.latitude,
-          'longitude': position.longitude,
-        },
-      });
-
+    if (jobSnapshot.docs.isNotEmpty) {
+      Fluttertoast.showToast(
+        msg: "You already have a job of this type.",
+        toastLength: Toast.LENGTH_SHORT,
+        gravity: ToastGravity.BOTTOM,
+        backgroundColor: Colors.red,
+        textColor: Colors.white,
+      );
       _descriptionController.clear();
-      Navigator.pop(context);
-    } catch (e) {
-      print("Error adding job: $e");
+      return;
     }
+
+    LocationPermission permission = await Geolocator.checkPermission();
+    while (permission == LocationPermission.denied ||
+        permission == LocationPermission.deniedForever) {
+      var completer = Completer<void>();
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Use your location'),
+            content: Text('We need your location to add the job.'),
+            actions: <Widget>[
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: Text('OK'),
+                onPressed: () async {
+                  Navigator.of(context).pop();
+                  permission = await Geolocator.requestPermission();
+                  if (permission != LocationPermission.denied &&
+                      permission != LocationPermission.deniedForever) {
+                    completer.complete();
+                  }
+                },
+              ),
+            ],
+          );
+        },
+      );
+      await completer.future;
+    }
+
+    Position position = await Geolocator.getCurrentPosition(
+        desiredAccuracy: LocationAccuracy.high);
+
+    // Determine Expiry date based on amount
+    DateTime expiryDate;
+    if (widget.amount == 20000) {
+      expiryDate = DateTime.now().add(Duration(days: 30));
+    } else if (widget.amount == 100000) {
+      expiryDate = DateTime.now().add(Duration(days: 30 * 6));
+    } else if (widget.amount == 160000) {
+      expiryDate = DateTime.now().add(Duration(days: 30 * 12));
+    } else {
+      expiryDate = DateTime.now(); // Default or add other conditions if needed
+    }
+
+    await FirebaseFirestore.instance.collection('users').doc(_user.uid).update({
+      'position': {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+      },
+    });
+
+    await ref.read(firebaseFirestoreProvider).collection('jobs').add({
+      'user id': _user.uid,
+      'user name': _userData['fullName'],
+      'phone number': _userData['phone'],
+      'image url': _userData['image url'],
+      'job type': widget.dropdownValue,
+      'description': _descriptionController.text.trim(),
+      'position': {
+        'latitude': position.latitude,
+        'longitude': position.longitude,
+      },
+      'expiry date': expiryDate, // Add expiry date here
+    });
+
+    _descriptionController.clear();
+    Navigator.pop(context);
+  } catch (e) {
+    print("Error adding job: $e");
   }
+}
+
 
   @override
   void dispose() {
