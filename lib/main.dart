@@ -60,10 +60,12 @@ class MyApp extends StatefulWidget {
     return prefs.getString('language');
   }
 
+  
+
+
   @override
   _MyAppState createState() => _MyAppState();
 }
-
 class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   late Locale _locale;
   late User _user;
@@ -145,6 +147,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
       _locale = locale;
     });
   }
+
 
   @override
   Widget build(BuildContext context) {

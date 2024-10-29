@@ -99,7 +99,6 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
         .get();
 
     
-
     LocationPermission permission = await Geolocator.checkPermission();
     while (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
