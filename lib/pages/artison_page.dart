@@ -710,6 +710,7 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
     User? _user = ref.read(firebaseAuthProvider).currentUser;
 
     if (_user != null) {
+      if (dropdownValue!="") {
       // Fetch job details to check for duplicates
       var jobSnapshot = await ref
           .read(firebaseFirestoreProvider)
@@ -739,6 +740,7 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
         bool hadFreeTrial = userDoc.data()?['had free trial'] ?? false;
 
         // Navigate based on 'had free trial' status
+        
         if (hadFreeTrial) {
           Navigator.push(
             context,
@@ -754,7 +756,21 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
             ),
           );
         }
+        }
+        
       }
+      else{
+          Fluttertoast.showToast(
+          msg: "you should select a job",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+
+        }
+    
+    
     }
   },
   child: _isLoading
