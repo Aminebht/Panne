@@ -5,8 +5,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:geolocator/geolocator.dart';
 import 'dart:async';
-
+import 'package:flutter_gen/gen_l10n/app_localizations.dart';
 import 'package:panne_auto/providers/auth_providers.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+
 
 class FreeTrialPage extends StatelessWidget {
   final String DropdownValue;
@@ -33,7 +35,7 @@ class FreeTrialPage extends StatelessWidget {
               SizedBox(height: 100),
               // Text message
               Text(
-                "Enjoy your 30-day free trial and explore all features at no cost!",
+                AppLocalizations.of(context)!.freetrial,
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: Colors.white,
@@ -57,14 +59,17 @@ class FreeTrialPage extends StatelessWidget {
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),
+                   alignment: Alignment.center,
                 ),
+                child:Center(
                 child: Text(
-                  "Start Your Free Trial",
+                  AppLocalizations.of(context)!.trialbutton,
                   style: TextStyle(
                     color: Colors.white,
                     fontSize: 25,
                     fontWeight: FontWeight.bold,
                   ),
+                ),
                 ),
               ),
             ],

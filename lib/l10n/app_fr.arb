@@ -68,7 +68,9 @@
   "next":"Suivant",
   "popular":"POPULAIRE",
   "month":"mois",
-  "currency":"TND"
+  "currency":"TND",
+  "freetrial": "Profitez de votre essai gratuit de 30 jours et explorez toutes les fonctionnalités sans frais !",
+  "trialbutton": "Essayez gratuitement"
 }
 
 

@@ -68,6 +68,8 @@
   "next":"Next",
   "popular":"POPULAR",
   "month":"month",
-  "currency":"TND"
+  "currency":"TND",
+  "freetrial": "Enjoy your 30-day free trial and explore all features at no cost!",
+  "trialbutton": "Start Your Free Trial"
 
 }
