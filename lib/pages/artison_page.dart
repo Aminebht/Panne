@@ -14,6 +14,7 @@ import 'package:panne_auto/componant/spinning_img.dart';
 import 'package:panne_auto/constants.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:panne_auto/pages/about_us.dart';
+import 'package:panne_auto/pages/artisan_page/freeTrial_page.dart';
 import 'package:panne_auto/pages/login_page.dart';
 import 'package:panne_auto/pages/user_condition.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -705,43 +706,64 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
                                   Padding(
                                     padding: const EdgeInsets.only(bottom: 30),
                                     child:GestureDetector(
-                                              onTap: () async {
-                                                User? _user = ref.read(firebaseAuthProvider).currentUser;
+  onTap: () async {
+    User? _user = ref.read(firebaseAuthProvider).currentUser;
 
-                                                if (_user != null) {
-                                                  // Fetch job details to check for duplicates
-                                                  var jobSnapshot = await ref
-                                                      .read(firebaseFirestoreProvider)
-                                                      .collection('jobs')
-                                                      .where('user id', isEqualTo: _user.uid)
-                                                      .where('job type', isEqualTo: dropdownValue)
-                                                      .get();
+    if (_user != null) {
+      // Fetch job details to check for duplicates
+      var jobSnapshot = await ref
+          .read(firebaseFirestoreProvider)
+          .collection('jobs')
+          .where('user id', isEqualTo: _user.uid)
+          .where('job type', isEqualTo: dropdownValue)
+          .get();
 
-                                                  if (jobSnapshot.docs.isNotEmpty) {
-                                                    // Show toast if job of this type already exists
-                                                    Fluttertoast.showToast(
-                                                      msg: "You already have a job of this type.",
-                                                      toastLength: Toast.LENGTH_SHORT,
-                                                      gravity: ToastGravity.BOTTOM,
-                                                      backgroundColor: Colors.red,
-                                                      textColor: Colors.white,
-                                                    );
-                                                    _descriptionController.clear();
-                                                  } else {
-                                                    // Navigate to Subscription page if no duplicate job is found
-                                                    Navigator.push(
-                                                      context,
-                                                      MaterialPageRoute(
-                                                        builder: (context) => SubscriptionScreen(DropdownValue: dropdownValue),
-                                                      ),
-                                                    );
-                                                  }
-                                                }
-                                              },
-                                              child: _isLoading ? SpinningImage() : MainButton(
-                                                name: AppLocalizations.of(context)!.add_job,
-                                              ),
-                                            ),
+      if (jobSnapshot.docs.isNotEmpty) {
+        // Show toast if job of this type already exists
+        Fluttertoast.showToast(
+          msg: "You already have a job of this type.",
+          toastLength: Toast.LENGTH_SHORT,
+          gravity: ToastGravity.BOTTOM,
+          backgroundColor: Colors.red,
+          textColor: Colors.white,
+        );
+        _descriptionController.clear();
+      } else {
+        // Check the 'had free trial' status in the user's document
+        var userDoc = await ref
+            .read(firebaseFirestoreProvider)
+            .collection('users')
+            .doc(_user.uid)
+            .get();
+
+        bool hadFreeTrial = userDoc.data()?['had free trial'] ?? false;
+
+        // Navigate based on 'had free trial' status
+        if (hadFreeTrial) {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => SubscriptionScreen(DropdownValue: dropdownValue),
+            ),
+          );
+        } else {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => FreeTrialPage(DropdownValue: dropdownValue),
+            ),
+          );
+        }
+      }
+    }
+  },
+  child: _isLoading
+      ? SpinningImage()
+      : MainButton(
+          name: AppLocalizations.of(context)!.add_job,
+        ),
+),
+
 
                                   )
                                 ],

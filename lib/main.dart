@@ -35,7 +35,6 @@ void main() async {
     runApp(ProviderScope(child: MyApp(navigatorKey: navigatorKey)));
   });
 }
-
 class MyApp extends StatefulWidget {
   final GlobalKey<NavigatorState> navigatorKey;
 

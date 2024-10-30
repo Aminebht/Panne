@@ -105,6 +105,8 @@ class _SignupPageState extends ConsumerState<SignupPage> {
         'longitude': '0',
       },
       'token': token,
+      'had free trial': false,
+     
     });
   }
 
