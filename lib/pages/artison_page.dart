@@ -611,7 +611,7 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
                                             ),
                                           ),
                                           PopupMenuItem<String>(
-                                            value: 'Electric car repairs',
+                                            value: 'Car Windows',
                                             child: Row(
                                               children: <Widget>[
                                                 Icon(Icons.car_repair_outlined),

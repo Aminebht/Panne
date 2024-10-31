@@ -4,14 +4,14 @@ import 'package:http/http.dart' as http;
 import 'package:panne_auto/konnect/webview_screen.dart';
 
 class KonnectApiService {
-  final String _baseUrl = "https://api.preprod.konnect.network/api/v2/payments/init-payment";
-  final String apiKey = "671e11b505b326a400542267:m8Z8N2E75vFJPCFFSM028GccI"; // Replace with actual x-api-key 
+  final String _baseUrl = "https://api.konnect.network/api/v2/payments/init-payment";
+  final String apiKey = "67238a9c82402c76c2c868c0:zCkIqEOTWvvp15SV"; // Replace with actual x-api-key 
 
   Future<void> sendPaymentRequest({
     required BuildContext context, // Accept BuildContext as a parameter
     required int amount,
     required String dropdownValue,
-    String receiverWalletId = "671e11b505b326a400542273",
+    String receiverWalletId = "67238a9c82402c76c2c868e3",
     List<String> acceptedPaymentMethods = const ['wallet', 'bank_card', 'e-DINAR', 'flouci'],
     int lifespan = 10,
   }) async {
@@ -60,7 +60,7 @@ class KonnectApiService {
     }
   }
   Future<String> getPaymentStatus(String paymentId) async {
-  final url = Uri.parse("https://api.preprod.konnect.network/api/v2/payments/$paymentId");
+  final url = Uri.parse("https://api.konnect.network/api/v2/payments/$paymentId");
   
   try {
     final response = await http.get(
