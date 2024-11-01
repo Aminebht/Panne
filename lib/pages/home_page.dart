@@ -168,9 +168,9 @@ class _HomePageState extends State<HomePage> {
         "iconPath": "assets/icons/icons8-car-charger-96.png"
       },
       {
-        "category": "Electric car repairs",
+        "category": "Car Windows",
         "localizationKey":
-            AppLocalizations.of(context)!.reparation_automobile_electrique,
+            AppLocalizations.of(context)!.window,
         "iconPath": "assets/icons/maintenance.png"
       },
     ];

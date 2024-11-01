@@ -60,7 +60,7 @@
   "recording" : "جاري التسجيل...",
   "already_have_job": "لديك بالفعل وظيفة من هذا الفئة.",
   "bornes_electiques": "محطات كهربائية",
-  "reparation_automobile_electrique": "إصلاح السيارات الكهربائية",
+  "window": "بلور السيارات",
   "description_artisan": "قم  تسجيل خداماتك كمقدم خدمة",
   "description_client": "أنت تبحث عن مقدمي الخدمة على التطبيق",
   "subscription":"إشتراك",
@@ -70,7 +70,8 @@
   "month":"شهر",
   "currency":"د.ت",
   "freetrial":"استمتع بفترة تجريبية مجانية لمدة 30 يومًا واستكشف جميع الميزات دون أي تكلفة",
-  "trialbutton":"ابدأ تجربتك المجانية"
+  "trialbutton":"ابدأ تجربتك المجانية",
+  "expiry":"ينتهي في"
 
 }
 

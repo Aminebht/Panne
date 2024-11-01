@@ -60,7 +60,7 @@
   "recording" : "Recording...",
   "already_have_job": "You already have a job of this category.",
   "bornes_electiques": "Car Charger",
-  "reparation_automobile_electrique": "Electric car repair",
+  "window": "Car Windows",
   "description_artisan": "you offre your services as an provider",
   "description_client": "You are looking for providers on the application",
   "subscription":"Subscription",
@@ -70,6 +70,7 @@
   "month":"month",
   "currency":"TND",
   "freetrial": "Enjoy your 30-day free trial and explore all features at no cost!",
-  "trialbutton": "Start Your Free Trial"
+  "trialbutton": "Start Your Free Trial",
+  "expiry":"Expires on"
 
 }

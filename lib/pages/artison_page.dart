@@ -621,7 +621,7 @@ class _ArtisanPageState extends ConsumerState<ArtisanPage> {
                                                       vertical: 8),
                                                   child: Text(truncateText(
                                                     applocalization
-                                                        .reparation_automobile_electrique,
+                                                        .window,
                                                     25, // Adjust maxLength as needed
                                                   )),
                                                 ),

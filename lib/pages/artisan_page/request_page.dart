@@ -96,7 +96,7 @@ class _RequestPageState extends ConsumerState<RequestPage> {
                       ),
       if (data['expiry date'] != null)
       Text(
-        'Expiry date: ${DateFormat('yyyy-MM-dd').format((data['expiry date'] as Timestamp).toDate())}',
+        AppLocalizations.of(context)!.expiry+' ${DateFormat('yyyy-MM-dd').format((data['expiry date'] as Timestamp).toDate())}',
         style: TextStyle(color: Colors.grey),
       ),
     ],

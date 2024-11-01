@@ -60,7 +60,7 @@
   "recording" : "Enregistrement en cours...",
   "already_have_job": "Vous avez déjà un emploi de cette catégorie.",
   "bornes_electiques": "Bornes électriques",
-  "reparation_automobile_electrique": "Réparation automobile électrique",
+  "window": "Vitres",
   "description_artisan" : "Vous offrez vos services en tant que prestataire",
   "description_client": "Vous cherchez des prestataires sur l'application",
   "subscription":"Abonnement",
@@ -70,7 +70,8 @@
   "month":"mois",
   "currency":"TND",
   "freetrial": "Profitez de votre essai gratuit de 30 jours et explorez toutes les fonctionnalités sans frais !",
-  "trialbutton": "Essayez gratuitement"
+  "trialbutton": "Essayez gratuitement",
+  "expiry":"Expire le"
 }
 
 
