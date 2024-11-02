@@ -22,6 +22,7 @@ import '../main.dart';
 import '../providers/auth_providers.dart';
 import 'package:panne_auto/pages/artisan_page/subscription.dart';
 import 'package:flutter_gen/gen_l10n/app_localizations.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ArtisanPage extends ConsumerStatefulWidget {
   const ArtisanPage({super.key});
@@ -31,12 +32,50 @@ class ArtisanPage extends ConsumerStatefulWidget {
 }
 
 class _ArtisanPageState extends ConsumerState<ArtisanPage> {
+@override
+void initState() {
+  super.initState();
+  checkFreeTrialStatus();
+}
+
+Future<void> checkFreeTrialStatus() async {
+  // Initialize SharedPreferences
+  SharedPreferences prefs = await SharedPreferences.getInstance();
+  
+  // Check if the popup has already been shown
+  bool hasShownPopup = prefs.getBool('hasShownPopup') ?? false;
+
+  // If the popup has already been shown, exit
+  if (hasShownPopup) return;
+
+  User? _user = ref.read(firebaseAuthProvider).currentUser;
+  var userDoc = await ref
+      .read(firebaseFirestoreProvider)
+      .collection('users')
+      .doc(_user?.uid)
+      .get();
+
+  bool hadFreeTrial = userDoc.data()?['had free trial'] ?? false;
+
+  if (!hadFreeTrial) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      showFreeTrialPopup(context);
+    });
+
+    // Set the flag to true so it won't show next time
+    await prefs.setBool('hasShownPopup', true);
+  }
+}
+
+
   final GlobalKey<ScaffoldState> _scaffoldKey = new GlobalKey<ScaffoldState>();
   final _descriptionController = TextEditingController();
   User? user;
   DocumentSnapshot? userData;
   bool _isLoading = false;
   bool isFirstTimeActivatingLocation = true;
+  
+
 
   Future<void> deleteAccount() async {
     User? user = FirebaseAuth.instance.currentUser;
@@ -823,3 +862,60 @@ String truncateText(String text, int maxLength) {
     return '${text.substring(0, maxLength)}...'; // Truncate and add ellipsis
   }
 }
+void showFreeTrialPopup(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return Dialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20.0),
+          ),
+          backgroundColor: Colors.transparent,
+          child: Container(
+            padding: EdgeInsets.symmetric(vertical: 30,horizontal: 20),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    Image.asset(
+                      'assets/icons/free.png', // Ensure the image is in assets
+                      height: 300,
+                      width: 394.96,
+                    ),
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: GestureDetector(
+                        onTap: () {
+                          Navigator.of(context).pop();
+                        },
+                        child: Image.asset(
+                      'assets/icons/x-button2.png', // Ensure the image is in assets
+                      height: 28,
+                    ),
+                      ),
+                    ),
+                  ],
+                ),
+                Text(
+                  AppLocalizations.of(context)!.popup,
+                  style: TextStyle(
+                    fontSize: 26,
+                    fontWeight: FontWeight.bold,
+                    color: Color.fromRGBO(249, 173, 10, 1),
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }

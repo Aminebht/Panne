@@ -71,6 +71,7 @@
   "currency":"TND",
   "freetrial": "Enjoy your 30-day free trial and explore all features at no cost!",
   "trialbutton": "Start Your Free Trial",
-  "expiry":"Expires on"
+  "expiry":"Expires on",
+  "popup":"Enjoy a free month trial!"
 
 }

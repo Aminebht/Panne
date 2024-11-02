@@ -71,7 +71,8 @@
   "currency":"TND",
   "freetrial": "Profitez de votre essai gratuit de 30 jours et explorez toutes les fonctionnalités sans frais !",
   "trialbutton": "Essayez gratuitement",
-  "expiry":"Expire le"
+  "expiry":"Expire le",
+  "popup":"Profitez d’un mois d’essai gratuit !"
 }
 
 
