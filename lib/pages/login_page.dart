@@ -5,6 +5,7 @@ import 'package:flutter_facebook_auth/flutter_facebook_auth.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_sign_in/google_sign_in.dart';
+import 'package:panne_auto/componant/admin_navbar.dart';
 import 'package:panne_auto/componant/artisan_bottom_navbar.dart';
 import 'package:panne_auto/componant/button.dart';
 import 'package:panne_auto/componant/button_navbar.dart';
@@ -96,6 +97,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
                 MaterialPageRoute(builder: (context) => ArtisanNavbar()),
               );
             }
+            else if(userType == 'Admin'){
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => Admin_nav()),
+              );
+            }
           } else {
             // User's data doesn't exist in Firestore, navigate them to the additional info page.
             Navigator.pushReplacement(
@@ -162,6 +169,12 @@ class _LoginPageState extends ConsumerState<LoginPage> {
               MaterialPageRoute(builder: (context) => ArtisanNavbar()),
             );
           }
+          else if(userType == 'Admin'){
+              Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (context) => Admin_nav()),
+              );
+            }
         } else {
           print("User snapshot does not exist for UID: ${user.uid}");
         }

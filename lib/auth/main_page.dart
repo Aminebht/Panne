@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app_badger/flutter_app_badger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:panne_auto/componant/admin_navbar.dart';
 import 'package:panne_auto/componant/artisan_bottom_navbar.dart';
 import 'package:panne_auto/componant/button_navbar.dart';
 import 'package:panne_auto/componant/spinning_img.dart';
@@ -89,7 +90,10 @@ class _MainPageState extends ConsumerState<MainPage>
                         return CustomNavBar();
                       } else if (userType == 'Artisan') {
                         return ArtisanNavbar();
-                      } else {
+                      } 
+                      else if (userType == 'Admin') {
+                        return Admin_nav();
+                        }else {
                         // Handle other user types or scenarios
                         return GetStaredScreen();
                       }
