@@ -5,23 +5,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:io';
 import 'package:firebase_core/firebase_core.dart';  // Import Firebase core
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();  // Ensures Firebase is initialized before runApp
-  await Firebase.initializeApp();  // Initialize Firebase
-  runApp(MyApp());
-}
-
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: AdvertisingPanelPage(),
-    );
-  }
-}
-
 class AdvertisingPanelPage extends StatefulWidget {
   @override
   _AdvertisingPanelPageState createState() => _AdvertisingPanelPageState();

@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:panne_auto/componant/spinning_img.dart';
+import 'package:panne_auto/pages/admin%20pages/ads_panel.dart';
 
 class HomePage_admin extends StatefulWidget {
   @override
@@ -11,6 +13,7 @@ class _HomePage_adminState extends State<HomePage_admin> {
   int totalClients = 0;
   int connectedArtisans = 0;
   int totalArtisans = 0;
+  bool isLoading = true;
 
   final List<String> categories = [
     "All", "Delivery", "Car Driver", "Ambulance", "Mechanic", "Car Wash",
@@ -31,6 +34,9 @@ class _HomePage_adminState extends State<HomePage_admin> {
   }
 
   Future<void> fetchData() async {
+    setState(() {
+      isLoading = true;
+    });
     try {
       final connectedClientsSnapshot = await FirebaseFirestore.instance
           .collection('users')
@@ -52,6 +58,10 @@ class _HomePage_adminState extends State<HomePage_admin> {
       setState(() {});
     } catch (e) {
       print("Error fetching data: $e");
+    }finally {
+      setState(() {
+        isLoading = false;
+      });
     }
   }
 
@@ -134,7 +144,7 @@ class _HomePage_adminState extends State<HomePage_admin> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Padding(
+      body: isLoading?Center(child: SpinningImage(),):Padding(
         padding: const EdgeInsets.all(30.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -217,7 +227,11 @@ class _HomePage_adminState extends State<HomePage_admin> {
                     const Divider(height: 1, color: Colors.white),
                     GestureDetector(
                       onTap: () {
-                        // Action for Advertising panel
+                        Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => AdvertisingPanelPage()),
+                            );
                       },
                       child: Container(
                         width: double.infinity,
