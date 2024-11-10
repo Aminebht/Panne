@@ -599,42 +599,60 @@ class _ChatScreenState extends State<ChatScreen> {
     }
   }
 
-  void _logCallEvent(
-      String code, String message, List<String> otherParameters) {
-    User? _user = FirebaseAuth.instance.currentUser;
+void _logCallEvent(
+    String code, String message, List<String> otherParameters) {
+  User? _user = FirebaseAuth.instance.currentUser;
 
-    // Create the call event data
-    Map<String, dynamic> messageData = {
-      'callType': 'Call',
-      'sentAt': Timestamp.now(),
-      'senderId': _user!.uid,
-      'receiverId': widget.otherUserId,
-      // assuming the receiverId is the first item in the list
-      'seenBySender': true,
-      'seenByReceiver': false,
-    };
+  // Create the call event data (without the 'callType' field)
+  Map<String, dynamic> callData = {
+    'sentAt': Timestamp.now(),  // The timestamp when the call was made
+    'senderId': _user!.uid,     // The sender's user ID
+    'receiverId': widget.otherUserId, // The receiver's user ID
+    'seenBySender': true,       // Whether the sender has seen the call event
+    'seenByReceiver': false,    // Whether the receiver has seen the call event
+  };
 
-    // Save the call event data in Firestore
-    DocumentReference chatDoc =
-        FirebaseFirestore.instance.collection('chats').doc(chatId);
+  // Create a new document in the 'calls' collection
+  FirebaseFirestore.instance.collection('calls').add(callData).then((docRef) {
+    print('Call event logged successfully.');
 
-    chatDoc.collection('messages').add(messageData).then((value) {
-      print('Call event logged successfully.');
+    _sendNotification(widget.otherUserId, 'Call');
 
-      _sendNotification(widget.otherUserId, 'Call');
+    // Reference to the chat document
+    DocumentReference chatDoc = FirebaseFirestore.instance.collection('chats').doc(chatId);
 
-      // Update 'lastCallAt' in the chat document after logging a call event
-      chatDoc.update({
-        'lastMessageAt': Timestamp.now(),
-      }).then((value) {
-        print("'lastCallAt' updated successfully.");
-      }).catchError((error) {
-        print("Failed to update 'lastCallAt': $error");
-      });
+    // Check if the chat document exists
+    chatDoc.get().then((docSnapshot) {
+      if (!docSnapshot.exists) {
+        // If the document does not exist, create it
+        chatDoc.set({
+          'lastMessageAt': Timestamp.now(),
+          'participants': [_user!.uid, widget.otherUserId], // Set the 'lastMessageAt' field
+        }).then((value) {
+          print("Chat document created successfully.");
+        }).catchError((error) {
+          print("Failed to create chat document: $error");
+        });
+      } else {
+        // If the document exists, update it
+        chatDoc.update({
+          'lastMessageAt': Timestamp.now(),  // Update 'lastMessageAt'
+        }).then((value) {
+          print("'lastMessageAt' updated successfully.");
+        }).catchError((error) {
+          print("Failed to update 'lastMessageAt': $error");
+        });
+      }
     }).catchError((error) {
-      print('Failed to log call event: $error');
+      print("Error checking chat document: $error");
     });
-  }
+  }).catchError((error) {
+    print('Failed to log call event: $error');
+  });
+}
+
+
+
 
   void _sendMessage() async {
     User? _user = FirebaseAuth.instance.currentUser;
@@ -714,72 +732,6 @@ class _ChatScreenState extends State<ChatScreen> {
       print('Token not found for user: $receiverId');
     }
   }
-
-  // void _sendNotification(String receiverId, String message) async {
-  //   // Get the receiver's token
-  //   DocumentSnapshot tokenDoc = await FirebaseFirestore.instance
-  //       .collection('users')
-  //       .doc(receiverId)
-  //       .get();
-  //   if (tokenDoc.exists &&
-  //       (tokenDoc.data() as Map<String, dynamic>).containsKey('token')) {
-  //     String receiverToken = (tokenDoc.data() as Map<String, dynamic>)['token'];
-  //
-  //     // Obtain access token using service account credentials
-  //     final String accessToken = await _getAccessToken();
-  //
-  //     // Send a message to the receiver's device
-  //     await http.post(
-  //       Uri.parse('https://fcm.googleapis.com/fcm/send'),
-  //       headers: <String, String>{
-  //         'Content-Type': 'application/json',
-  //         'Authorization': 'Bearer $accessToken',
-  //       },
-  //       body: jsonEncode(
-  //         {
-  //           'notification': {
-  //             'title': 'New Message',
-  //             'body': message,
-  //           },
-  //           'priority': 'high',
-  //           'data': {
-  //             'click_action': 'FLUTTER_NOTIFICATION_CLICK',
-  //             'id': '1',
-  //             'status': 'done',
-  //           },
-  //           'to': receiverToken,
-  //         },
-  //       ),
-  //     );
-  //
-  //     FlutterAppBadger.updateBadgeCount(1);
-  //   } else {
-  //     print('Token not found for user: $receiverId');
-  //   }
-  // }
-  //
-  // Future<String> _getAccessToken() async {
-  //   try {
-  //     // Read the service account JSON file
-  //     final File jsonFile = File('path/to/your/service-account.json');
-  //     final String serviceAccountJson = await jsonFile.readAsString();
-  //
-  //     // Parse the service account credentials
-  //     final credentials =
-  //         ServiceAccountCredentials.fromJson(serviceAccountJson);
-  //
-  //     // Create a client using the service account credentials
-  //     final client = await clientViaServiceAccount(credentials, []);
-  //
-  //     // Retrieve the access token
-  //     final AccessCredentials accessCredentials = await client.credentials;
-  //     return accessCredentials.accessToken.data;
-  //   } catch (e) {
-  //     print('Error getting access token: $e');
-  //     return ''; // Handle the error accordingly
-  //   }
-  // }
-
   void _showDeleteMessageDialog(DocumentSnapshot messageDoc) {
     final String currentUserId = FirebaseAuth.instance.currentUser!.uid;
     final String messageSenderId = messageDoc['senderId'];

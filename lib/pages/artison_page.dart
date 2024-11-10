@@ -919,3 +919,4 @@ void showFreeTrialPopup(BuildContext context) {
       },
     );
   }
+  
