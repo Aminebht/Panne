@@ -9,6 +9,8 @@ import 'package:panne_auto/pages/artisan_page/request_page.dart';
 import 'package:panne_auto/providers/auth_providers.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'konnect_api_service.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 class WebViewScreen extends ConsumerStatefulWidget {
   final String url;
@@ -91,6 +93,12 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
         .doc(_user!.uid)
         .get();
 
+    // Convert DocumentSnapshot to Map and add null check
+    Map<String, dynamic>? userData = _userData.data() as Map<String, dynamic>?;
+    if (userData == null) {
+      throw Exception("User data not found");
+    }
+
     var jobSnapshot = await ref
         .read(firebaseFirestoreProvider)
         .collection('jobs')
@@ -98,7 +106,6 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
         .where('job type', isEqualTo: widget.dropdownValue)
         .get();
 
-    
     LocationPermission permission = await Geolocator.checkPermission();
     while (permission == LocationPermission.denied ||
         permission == LocationPermission.deniedForever) {
@@ -137,6 +144,10 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
     Position position = await Geolocator.getCurrentPosition(
         desiredAccuracy: LocationAccuracy.high);
 
+    // Get country from coordinates
+    String country = await getCountryFromCoordinates(
+        position.latitude, position.longitude);
+
     // Determine Expiry date based on amount
     DateTime expiryDate;
     if (widget.amount == 20000) {
@@ -146,34 +157,89 @@ class _WebViewScreenState extends ConsumerState<WebViewScreen> {
     } else if (widget.amount == 160000) {
       expiryDate = DateTime.now().add(Duration(days: 30 * 12));
     } else {
-      expiryDate = DateTime.now(); // Default or add other conditions if needed
+      expiryDate = DateTime.now();
     }
 
-    await FirebaseFirestore.instance.collection('users').doc(_user.uid).update({
+    // Use WriteBatch for atomic operations
+    WriteBatch batch = FirebaseFirestore.instance.batch();
+
+    // Update user document
+    DocumentReference userRef = FirebaseFirestore.instance
+        .collection('users')
+        .doc(_user.uid);
+    
+    batch.update(userRef, {
       'position': {
         'latitude': position.latitude,
         'longitude': position.longitude,
       },
+      if (country.isNotEmpty) 'country': country, // Only update if country is not empty
     });
 
-    await ref.read(firebaseFirestoreProvider).collection('jobs').add({
+    // Create new job document
+    DocumentReference jobRef = ref.read(firebaseFirestoreProvider)
+        .collection('jobs')
+        .doc();
+
+    batch.set(jobRef, {
       'user id': _user.uid,
-      'user name': _userData['fullName'],
-      'phone number': _userData['phone'],
-      'image url': _userData['image url'],
+      'user name': userData['fullName'] ?? '',
+      'phone number': userData['phone'] ?? '',
+      'image url': userData['image url'] ?? '',
       'job type': widget.dropdownValue,
       'description': _descriptionController.text.trim(),
       'position': {
         'latitude': position.latitude,
         'longitude': position.longitude,
       },
-      'expiry date': expiryDate, // Add expiry date here
+      'expiry date': expiryDate,
     });
+
+    // Commit all operations
+    await batch.commit();
 
     _descriptionController.clear();
     Navigator.pop(context);
   } catch (e) {
     print("Error adding job: $e");
+    // Show error dialog
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Error'),
+          content: Text('Failed to add job. Please try again later.'),
+          actions: <Widget>[
+            TextButton(
+              child: Text('OK'),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+// Add this helper function to get country from coordinates
+Future<String> getCountryFromCoordinates(double latitude, double longitude) async {
+  try {
+    final url = 'https://nominatim.openstreetmap.org/reverse?lat=$latitude&lon=$longitude&format=json&accept-language=en';
+    final response = await http.get(Uri.parse(url), headers: {
+      'User-Agent': 'FlutterApp (your-email@example.com)' // Replace with your email
+    });
+
+    if (response.statusCode == 200) {
+      final data = json.decode(response.body);
+      final country = data['address']?['country'];
+      return country ?? '';
+    }
+    return '';
+  } catch (e) {
+    print("Error fetching country: $e");
+    return '';
   }
 }
 
