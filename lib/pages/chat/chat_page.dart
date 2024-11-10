@@ -622,7 +622,7 @@ void _logCallEvent(
     DocumentReference chatDoc = FirebaseFirestore.instance.collection('chats').doc(chatId);
 
     // Check if the chat document exists
-    chatDoc.get().then((docSnapshot) {
+    chatDoc.get().then((docSnapshot) async {
       if (!docSnapshot.exists) {
         // If the document does not exist, create it
         chatDoc.set({
@@ -643,6 +643,12 @@ void _logCallEvent(
           print("Failed to update 'lastMessageAt': $error");
         });
       }
+      Map<String, dynamic> messageData = {
+      ...callData,
+      'callType': 'Call',  // Add 'callType' field only for messages
+    };
+    await chatDoc.collection('messages').add(messageData);
+    print("Call event added to 'messages' subcollection successfully.");
     }).catchError((error) {
       print("Error checking chat document: $error");
     });
