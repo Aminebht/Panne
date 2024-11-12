@@ -68,6 +68,9 @@ dependencies:
   flutter_app_badger: ^1.1.2
   googleapis_auth: ^1.6.0
   google_mobile_ads: ^5.1.0
+  video_player: ^2.1.15
+  image: ^4.0.15
+  flutter_image_compress: ^2.3.0
 
 
 

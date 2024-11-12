@@ -7,6 +7,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'package:panne_auto/constants.dart';
+import 'package:panne_auto/pages/AdsCarousel.dart';
 import 'package:panne_auto/pages/about_us.dart';
 import 'package:panne_auto/pages/client%20pages/CustomSearchDelegate.dart';
 import 'package:panne_auto/pages/client%20pages/jobs_page.dart';
@@ -386,16 +387,7 @@ class _HomePageState extends State<HomePage> {
                 ],
               ),
             ),
-            Container(
-              height: size.height * 0.25,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 25),
-                child: Image.asset(
-                        'assets/icons/almost-done-mechanic-holding-tire-repair-garage-replacement-winter-summer-tires 1.png')
-                    .animate()
-                    .fadeIn(),
-              ),
-            ),
+            AdsCarousel(),
             Row(
               children: [
                 Padding(

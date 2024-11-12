@@ -13,6 +13,7 @@ import 'package:panne_auto/componant/button.dart';
 import 'package:panne_auto/componant/spinning_img.dart';
 import 'package:panne_auto/constants.dart';
 import 'package:geolocator/geolocator.dart';
+import 'package:panne_auto/pages/AdsCarousel.dart';
 import 'package:panne_auto/pages/about_us.dart';
 import 'package:panne_auto/pages/artisan_page/freeTrial_page.dart';
 import 'package:panne_auto/pages/login_page.dart';
@@ -382,15 +383,7 @@ Future<void> checkFreeTrialStatus() async {
                 ],
               ),
             ),
-            Container(
-              height: size.height * 0.25,
-              child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 25),
-                  child: Image.asset(
-                          'assets/icons/almost-done-mechanic-holding-tire-repair-garage-replacement-winter-summer-tires 1.png')
-                      .animate()
-                      .fadeIn()),
-            ),
+            AdsCarousel(),
             Row(
               children: [
                 Padding(
