@@ -1,36 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:panne_auto/pages/admin%20pages/ads_panel.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_app_badger/flutter_app_badger.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart';
-import 'package:panne_auto/auth/main_page.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:flutter_gen/gen_l10n/app_localizations.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:panne_auto/functions/deleteExpiredJobs.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import 'package:zego_uikit_prebuilt_call/zego_uikit_prebuilt_call.dart';
-import 'package:zego_uikit_signaling_plugin/zego_uikit_signaling_plugin.dart';
-import 'package:http/http.dart' as http;
-import 'dart:convert';
-
-void main() async{
-  runApp(MyApp());
-  await Firebase.initializeApp();
-}
-
-class MyApp extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      home: CallsStatsPage(),
-    );
-  }
-}
+import 'package:intl/intl.dart';
 
 class CallsStatsPage extends StatefulWidget {
   @override
@@ -38,37 +8,181 @@ class CallsStatsPage extends StatefulWidget {
 }
 
 class _CallsStatsPageState extends State<CallsStatsPage> {
-  String selectedPeriod = "This week";
+  String selectedPeriod = "All Time";
   String selectedCategory = "All";
-  String selectedCountry = "";
-  String selectedSort = "ascending";
-
-  // Placeholder data for artisans
-  List<Map<String, dynamic>> artisans = [
-    {"name": "Mohamed Salah", "calls": 18},
-    {"name": "Alaya Ibriguigui", "calls": 47},
-    {"name": "Yann Sass", "calls": 7},
-    {"name": "Marwen Tej", "calls": 11},
-    {"name": "Ferjani Sassi", "calls": 5},
-    {"name": "Karim El Aouadhi", "calls": 9},
-    {"name": "Youssef El Blaïli", "calls": 230},
-    {"name": "Slimen Kshok", "calls": 2},
-    {"name": "Khaled Yahia", "calls": 40},
-    {"name": "Lamin Ndaw", "calls": 17},
-    {"name": "Alaya Ibriguigui", "calls": 47},
-    {"name": "Mohamed Salah", "calls": 18},
-    {"name": "Yann Sass", "calls": 7},
-    {"name": "Marwen Tej", "calls": 11},
-    {"name": "Ferjani Sassi", "calls": 5},
-    {"name": "Karim El Aouadhi", "calls": 9},
-    {"name": "Youssef El Blaïli", "calls": 230},
+  String selectedCountry = "All";
+  String selectedSort = "descending";
+  final List<String> countries = [
+    "All", "Tunisia", "Algeria"
   ];
+
+  List<Map<String, dynamic>> artisans = [];
   int currentPage = 1;
   int itemsPerPage = 10;
+  bool isLoading = false;
+  String? error;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchArtisansData();// Load initial data
+  }
+
+  // Convert selected period to DateTime range
+  DateTimeRange? getPeriodDateRange() {
+    final now = DateTime.now();
+    switch (selectedPeriod) {
+      case "Last 7 days":
+        return DateTimeRange(
+          start: now.subtract(const Duration(days: 7)),
+          end: now,
+        );
+      case "Last 30 days":
+        return DateTimeRange(
+          start: now.subtract(const Duration(days: 30)),
+          end: now,
+        );
+      case "This month":
+        return DateTimeRange(
+          start: DateTime(now.year, now.month, 1),
+          end: now,
+        );
+      case "Last three months":
+        return DateTimeRange(
+          start: now.subtract(const Duration(days: 90)),
+          end: now,
+        );
+      case "Last year":
+        return DateTimeRange(
+          start: DateTime(now.year - 1, now.month, now.day),
+          end: now,
+        );
+      default:
+        return null; // "All Time" case
+    }
+  }
+
+  // A global variable to store the raw fetched data in memory
+List<Map<String, dynamic>> cachedArtisans = [];
+
+Future<void> fetchArtisansData() async {
+  setState(() {
+    isLoading = true;
+    error = null;
+  });
+
+  try {
+    // If the data has already been fetched, apply the local filter
+    if (cachedArtisans.isNotEmpty) {
+      // Apply the filter locally
+      List<Map<String, dynamic>> filteredArtisans = _filterArtisans(
+        category: selectedCategory,
+        country: selectedCountry,
+        period: getPeriodDateRange(), // Apply the period filter
+      );
+      sortArtisans(filteredArtisans);
+      setState(() {
+        artisans = filteredArtisans;
+        isLoading = false;
+      });
+      return;
+    }
+
+    // Base query to fetch all artisans once from Firestore
+    QuerySnapshot usersSnapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('user type', isEqualTo: 'Artisan')
+        .get();
+
+    List<Map<String, dynamic>> newArtisans = [];
+
+    // Get date range for period filtering
+    DateTimeRange? dateRange = getPeriodDateRange();
+
+    for (var userDoc in usersSnapshot.docs) {
+      var artisanId = userDoc.id;
+      var artisanData = userDoc.data() as Map<String, dynamic>;
+
+      // Build calls query
+      Query callsQuery = FirebaseFirestore.instance
+          .collection('calls')
+          .where('receiverId', isEqualTo: artisanId);
+
+      // Apply date range filter if specified
+      if (dateRange != null) {
+        callsQuery = callsQuery
+            .where('timestamp', isGreaterThanOrEqualTo: dateRange.start)
+            .where('timestamp', isLessThanOrEqualTo: dateRange.end);
+      }
+
+      QuerySnapshot callsSnapshot = await callsQuery.get();
+      if(callsSnapshot.docs.length!=0)
+      {newArtisans.add({
+        'name': artisanData['fullName'] ?? 'Unknown',
+        'calls': callsSnapshot.docs.length,
+        'category': artisanData['category'] ?? 'Unknown',
+        'country': artisanData['country'] ?? 'Unknown',
+        'timestamp': artisanData['timestamp'], // Store the timestamp as well
+      });
+      }
+    }
+
+    // Cache the full data
+    cachedArtisans = newArtisans;
+
+    // Apply the local filter to the fetched data
+    List<Map<String, dynamic>> filteredArtisans = _filterArtisans(
+      category: selectedCategory,
+      country: selectedCountry,
+      period: dateRange, // Apply the period filter here too
+    );
+    sortArtisans(filteredArtisans);
+    setState(() {
+      artisans = filteredArtisans;
+      isLoading = false;
+    });
+  } catch (e) {
+    setState(() {
+      error = 'Error fetching data: ${e.toString()}';
+      isLoading = false;
+    });
+  }
+}
+
+// A helper function to filter the cached artisans based on the selected category, country, and period
+List<Map<String, dynamic>> _filterArtisans({
+  required String category,
+  required String country,
+  DateTimeRange? period,
+}) {
+  return cachedArtisans.where((artisan) {
+    bool matchesCategory = category == "All" || artisan['category'] == category;
+    bool matchesCountry = country == "All" || artisan['country'] == country;
+    bool matchesPeriod = period == null ||
+        (artisan['timestamp'] as Timestamp).toDate().isAfter(period.start) &&
+        (artisan['timestamp'] as Timestamp).toDate().isBefore(period.end);
+
+    return matchesCategory && matchesCountry && matchesPeriod;
+  }).toList();
+}
+
+
+  void sortArtisans(List<Map<String, dynamic>> data) {
+    switch (selectedSort) {
+      case "ascending":
+        data.sort((a, b) => a['calls'].compareTo(b['calls']));
+        break;
+      case "descending":
+        data.sort((a, b) => b['calls'].compareTo(a['calls']));
+        break;
+      case "by alphabet":
+        data.sort((a, b) => a['name'].toString().compareTo(b['name'].toString()));
+        break;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    // Pagination logic
     int start = (currentPage - 1) * itemsPerPage;
     int end = (start + itemsPerPage) > artisans.length ? artisans.length : (start + itemsPerPage);
     List<Map<String, dynamic>> currentArtisans = artisans.sublist(start, end);
@@ -78,18 +192,12 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
         title: const Text("Calls stats"),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => AdvertisingPanelPage()),
-            );
-          },
+          onPressed: () => Navigator.pop(context),
         ),
       ),
       body: Container(
         color: Color(0xFFF3F3F3),
-        child: SingleChildScrollView( // Wrap with SingleChildScrollView
+        child: SingleChildScrollView(
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
@@ -98,10 +206,18 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
                 const SizedBox(height: 8),
                 _buildSort(),
                 const SizedBox(height: 15),
-                _buildTable(currentArtisans),
+                if (isLoading)
+                  const CircularProgressIndicator()
+                else if (error != null)
+                  Text(error!, style: TextStyle(color: Colors.red))
+                else if (artisans.isEmpty)
+                  const Text("No data found")
+                else
+                  _buildTable(currentArtisans),
                 const SizedBox(height: 15),
-                _buildPagination(),
-                const SizedBox(height: 20), // Add bottom padding
+                if (!isLoading && artisans.isNotEmpty)
+                  _buildPagination(),
+                const SizedBox(height: 20),
               ],
             ),
           ),
@@ -153,48 +269,15 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           // Choose Country Section
           Text("Choose Country", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(height: 9),
-          Container(
-            height: 35,
-            width: 118,
-            child: TextField(
-              onChanged: (value) {
-                setState(() {
-                  selectedCountry = value;
-                });
-              },
-              textAlign: TextAlign.center,
-              decoration: InputDecoration(
-                hintText: "Enter country name",
-                hintStyle: TextStyle(
-                  fontSize: 9,
-                  color: Color(0xFF9B9A96),
-                ),
-                filled: true,
-                fillColor: Colors.white,
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(5),
-                  borderSide: BorderSide(
-                    color: Color(0xFFE29100),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(5),
-                  borderSide: BorderSide(
-                    color: Color(0xFFE29100),
-                    width: 1.5,
-                  ),
-                ),
-              ),
-            ),
-          ),
+          _buildCountrySection(),
 
           const SizedBox(height: 10),
 
           Align(
             alignment: Alignment.center,
             child: ElevatedButton(
-              onPressed: () {
-                // Apply filters and fetch data from database
+              onPressed: () async {
+                await fetchArtisansData();
               },
               child: const Text("Filter", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               style: ElevatedButton.styleFrom(
@@ -225,7 +308,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           Wrap(
             spacing: 9,
             children: [
-              _buildFilterChip("Select category", ["ascending", "descending", "by alphabet"], selectedSort, (value) {
+              _buildFilterChip("Select category", ["descending", "ascending", "by alphabet"], selectedSort, (value) {
                 setState(() {
                   selectedSort = value;
                 });
@@ -357,6 +440,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           return GestureDetector(
             onTap: () {
               onSelected(option);
+              sortArtisans(artisans);
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
@@ -383,4 +467,115 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
       ),
     );
   }
+  Widget _buildCountrySection() {
+  return Container(
+    height: 80,
+    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5),
+    child: Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: countries.length + 1, // Adding 1 for the "+" button
+            itemBuilder: (context, index) {
+              if (index == countries.length) {
+                // "+" button
+                return GestureDetector(
+                  onTap: () async {
+                    final newCountry = await _showAddCountryDialog();
+                    if (newCountry != null && newCountry.isNotEmpty) {
+                      setState(() {
+                        countries.add(newCountry);
+                      });
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
+                    child: Chip(
+                      label: const Text(
+                        '+',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                        ),
+                      ),
+                      backgroundColor: const Color(0xFFE29100),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                );
+              } else {
+                // Regular country chips
+                final country = countries[index];
+                final isSelected = country == selectedCountry;
+
+                return GestureDetector(
+                  onTap: () async {
+                    setState(() {
+                      selectedCountry = country;
+                    });
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
+                    child: Chip(
+                      label: Text(
+                        country,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : const Color(0xFFE29100),
+                          fontSize: 15,
+                        ),
+                      ),
+                      backgroundColor: isSelected ? const Color(0xFFE29100) : Colors.orange.withOpacity(0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: const BorderSide(
+                          color: Color(0xFFE29100),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+Future<String?> _showAddCountryDialog() async {
+  String? newCountry;
+  return await showDialog<String>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Enter new country'),
+        content: TextField(
+          onChanged: (value) {
+            newCountry = value;
+          },
+          decoration: const InputDecoration(hintText: "Country name"),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: const Text('Add'),
+            onPressed: () {
+              Navigator.of(context).pop(newCountry);
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
 }

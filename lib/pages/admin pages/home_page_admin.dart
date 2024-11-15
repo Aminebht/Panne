@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:panne_auto/componant/spinning_img.dart';
 import 'package:panne_auto/pages/admin%20pages/ads_panel.dart';
+import 'package:panne_auto/pages/admin%20pages/calls_stats.dart';
 
 class HomePage_admin extends StatefulWidget {
   @override
@@ -206,7 +207,11 @@ class _HomePage_adminState extends State<HomePage_admin> {
                   children: [
                     GestureDetector(
                       onTap: () {
-                        // Action for Calls stats
+                        Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => CallsStatsPage()),
+                            );
                       },
                       child: Container(
                         width: double.infinity,
