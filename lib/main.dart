@@ -74,7 +74,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
-    _locale = Locale('en'); // Initialize with a default value
+    _locale = const Locale('fr'); // Initialize with a default value
     _loadSavedLocale();
     FlutterAppBadger.removeBadge();
     _initializeUser();

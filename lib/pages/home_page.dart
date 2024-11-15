@@ -391,7 +391,7 @@ class _HomePageState extends State<HomePage> {
             Row(
               children: [
                 Padding(
-                  padding: const EdgeInsets.only(top: 20, left: 50, right: 45),
+                  padding: const EdgeInsets.only(top: 0, left: 50, right: 45),
                   child: Text(
                     AppLocalizations.of(context)!.looking,
                     style: GoogleFonts.poppins(

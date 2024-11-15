@@ -16,14 +16,17 @@ class _HomePage_adminState extends State<HomePage_admin> {
   bool isLoading = true;
 
   final List<String> categories = [
-    "All", "Delivery", "Car Driver", "Ambulance", "Mechanic", "Car Wash",
+    "All", "Delivery", "Car Driver", "Ambulance", "Mechanic", "Car wash",
     "Car rent", "Diagnostic auto", "Electricite auto", "SoS remorquage",
     "Tire Repair", "Car Charger", "Car windows"
   ];
+  final List<String> countries = [
+    "All", "Tunisia", "Algeria"
+  ];
 
   String selectedCategory = "All";
-  
-  // Adding cache maps to store counts for each category to avoid redundant fetching
+  String selectedCountry = "All";
+
   Map<String, int> connectedArtisanCache = {};
   Map<String, int> totalArtisanCache = {};
 
@@ -38,89 +41,89 @@ class _HomePage_adminState extends State<HomePage_admin> {
       isLoading = true;
     });
     try {
-      final connectedClientsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('user type', isEqualTo: 'Client')
-          .where('isOnline', isEqualTo: true)
-          .get();
-      connectedClients = connectedClientsSnapshot.size;
-
-      final totalClientsSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('user type', isEqualTo: 'Client')
-          .get();
-      totalClients = totalClientsSnapshot.size;
-
-      // Fetching "All" category counts and caching them
-      connectedArtisans = await fetchConnectedArtisans("All");
-      totalArtisans = await fetchTotalArtisans("All");
+      connectedClients = await fetchClientCount(online: true);
+      totalClients = await fetchClientCount();
+      
+      connectedArtisans = await fetchArtisanCount( online: true);
+      totalArtisans = await fetchArtisanCount();
 
       setState(() {});
     } catch (e) {
       print("Error fetching data: $e");
-    }finally {
+    } finally {
       setState(() {
         isLoading = false;
       });
     }
   }
 
-  Future<int> fetchConnectedArtisans(String category) async {
-    if (connectedArtisanCache.containsKey(category)) {
-      return connectedArtisanCache[category]!;
+  Future<int> fetchClientCount({bool online = false}) async {
+    Query query = FirebaseFirestore.instance
+        .collection('users')
+        .where('user type', isEqualTo: 'Client');
+
+    if (selectedCountry != "All") {
+      query = query.where('country', isEqualTo: selectedCountry);
+    }
+    if (online) {
+      query = query.where('isOnline', isEqualTo: true);
     }
 
-    int result;
-    if (category == "All") {
-      final connectedArtisansSnapshot = await FirebaseFirestore.instance
-          .collection('users')
-          .where('user type', isEqualTo: 'Artisan')
-          .where('isOnline', isEqualTo: true)
-          .get();
-      result = connectedArtisansSnapshot.size;
-    } else {
-      QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
-          .collection('jobs')
-          .where('job type', isEqualTo: category)
-          .get();
-
-      List<String> artisanIds = jobSnapshot.docs.map((doc) => doc['user id'] as String).toList();
-      result = await getCountForBatchedUserIds(artisanIds, isOnline: true);
-    }
-
-    connectedArtisanCache[category] = result;
-    return result;
+    final snapshot = await query.get();
+    return snapshot.size;
   }
 
-  Future<int> fetchTotalArtisans(String category) async {
-    if (totalArtisanCache.containsKey(category)) {
-      return totalArtisanCache[category]!;
+  Future<int> fetchArtisanCount({bool online = false}) async {
+    // Create a composite key that includes both category and country
+    String cacheKey = '${selectedCategory}_${selectedCountry}';
+    // Only use cache for total counts (not online counts) and if cache exists
+    if (connectedArtisanCache.containsKey(cacheKey) && !online) {
+      return connectedArtisanCache[cacheKey]!;
     }
 
-    int result;
-    if (category == "All") {
-      final totalArtisansSnapshot = await FirebaseFirestore.instance
+    int count = 0;
+    QuerySnapshot jobSnapshot;
+
+    if (selectedCategory == "All") {
+      Query query = FirebaseFirestore.instance
           .collection('users')
-          .where('user type', isEqualTo: 'Artisan')
-          .get();
-      result = totalArtisansSnapshot.size;
+          .where('user type', isEqualTo: 'Artisan');
+
+      if (selectedCountry != "All") {
+        query = query.where('country', isEqualTo: selectedCountry);
+      }
+      if (online) {
+        query = query.where('isOnline', isEqualTo: true);
+      }
+
+      jobSnapshot = await query.get();
+      count = jobSnapshot.size;
     } else {
-      QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
+      // First get all artisans for the selected category
+      jobSnapshot = await FirebaseFirestore.instance
           .collection('jobs')
-          .where('job type', isEqualTo: category)
+          .where('job type', isEqualTo: selectedCategory)
           .get();
 
-      List<String> artisanIds = jobSnapshot.docs.map((doc) => doc['user id'] as String).toList();
-      result = await getCountForBatchedUserIds(artisanIds);
+      List<String> artisanIds = jobSnapshot.docs
+          .map((doc) => doc['user id'] as String)
+          .toList();
+      
+      // Then filter by country and online status
+      count = await getCountForBatchedUserIds(artisanIds, selectedCountry, online: online);
     }
 
-    totalArtisanCache[category] = result;
-    return result;
+    // Only cache the total counts (not online counts)
+    if (!online) {
+      connectedArtisanCache[cacheKey] = count;
+    }
+
+    return count;
   }
 
-  Future<int> getCountForBatchedUserIds(List<String> userIds, {bool isOnline = false}) async {
+  Future<int> getCountForBatchedUserIds(List<String> userIds, String country, {bool online = false}) async {
     if (userIds.isEmpty) return 0;
-
+    
     int count = 0;
     for (int i = 0; i < userIds.length; i += 30) {
       final batchIds = userIds.sublist(i, i + 30 > userIds.length ? userIds.length : i + 30);
@@ -130,7 +133,10 @@ class _HomePage_adminState extends State<HomePage_admin> {
           .where(FieldPath.documentId, whereIn: batchIds)
           .where('user type', isEqualTo: 'Artisan');
 
-      if (isOnline) {
+      if (country != "All") {
+        query = query.where('country', isEqualTo: country);
+      }
+      if (online) {
         query = query.where('isOnline', isEqualTo: true);
       }
 
@@ -141,7 +147,7 @@ class _HomePage_adminState extends State<HomePage_admin> {
     return count;
   }
 
-  @override
+@override
   Widget build(BuildContext context) {
     return Scaffold(
       body: isLoading?Center(child: SpinningImage(),):Padding(
@@ -276,6 +282,8 @@ class _HomePage_adminState extends State<HomePage_admin> {
               ],
             ),
             const SizedBox(height: 54),
+            const Text("Choose a country", style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700)),
+            _buildCountrySection(),
             const Text("Client", style: TextStyle(fontSize: 23, fontWeight: FontWeight.w900)),
             const SizedBox(height: 40),
             Row(
@@ -357,8 +365,8 @@ class _HomePage_adminState extends State<HomePage_admin> {
                     setState(() {
                       selectedCategory = category;
                     });
-                    connectedArtisans = await fetchConnectedArtisans(category);
-                    totalArtisans = await fetchTotalArtisans(category);
+                    connectedArtisans = await fetchArtisanCount(online: true);
+                    totalArtisans = await fetchArtisanCount();
                     setState(() {});
                   },
                   child: Padding(
@@ -389,4 +397,123 @@ class _HomePage_adminState extends State<HomePage_admin> {
       ),
     );
   }
+  Widget _buildCountrySection() {
+  return Container(
+    height: 80,
+    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5),
+    child: Column(
+      children: [
+        Expanded(
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: countries.length + 1, // Adding 1 for the "+" button
+            itemBuilder: (context, index) {
+              if (index == countries.length) {
+                // "+" button
+                return GestureDetector(
+                  onTap: () async {
+                    final newCountry = await _showAddCountryDialog();
+                    if (newCountry != null && newCountry.isNotEmpty) {
+                      setState(() {
+                        countries.add(newCountry);
+                      });
+                    }
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
+                    child: Chip(
+                      label: const Text(
+                        '+',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 20,
+                        ),
+                      ),
+                      backgroundColor: const Color(0xFFE29100),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                  ),
+                );
+              } else {
+                // Regular country chips
+                final country = countries[index];
+                final isSelected = country == selectedCountry;
+
+                return GestureDetector(
+                  onTap: () async {
+                    setState(() {
+                      selectedCountry = country;
+                      selectedCategory = "All";
+                    });
+
+                    // Fetch the data again after country change
+                    await fetchData();
+                    setState(() {});// This refetches the data for the selected country
+                  },
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
+                    child: Chip(
+                      label: Text(
+                        country,
+                        style: TextStyle(
+                          color: isSelected ? Colors.white : const Color(0xFFE29100),
+                          fontSize: 15,
+                        ),
+                      ),
+                      backgroundColor: isSelected ? const Color(0xFFE29100) : Colors.orange.withOpacity(0),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                        side: const BorderSide(
+                          color: Color(0xFFE29100),
+                          width: 1,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }
+            },
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+// Dialog to add a new country
+Future<String?> _showAddCountryDialog() async {
+  String? newCountry;
+  return await showDialog<String>(
+    context: context,
+    builder: (BuildContext context) {
+      return AlertDialog(
+        title: const Text('Enter new country'),
+        content: TextField(
+          onChanged: (value) {
+            newCountry = value;
+          },
+          decoration: const InputDecoration(hintText: "Country name"),
+        ),
+        actions: <Widget>[
+          TextButton(
+            child: const Text('Cancel'),
+            onPressed: () {
+              Navigator.of(context).pop();
+            },
+          ),
+          TextButton(
+            child: const Text('Add'),
+            onPressed: () {
+              Navigator.of(context).pop(newCountry);
+            },
+          ),
+        ],
+      );
+    },
+  );
+}
+
+
 }
