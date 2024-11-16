@@ -3,7 +3,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import 'package:panne_auto/componant/spinning_img.dart';
 
-
 class CallsStatsPage extends StatefulWidget {
   @override
   _CallsStatsPageState createState() => _CallsStatsPageState();
@@ -23,14 +22,125 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
   int itemsPerPage = 10;
   bool isLoading = false;
   String? error;
+  Map<String, int> connectedArtisanCache = {};
 
   @override
   void initState() {
     super.initState();
-    fetchArtisansData();// Load initial data
+    fetchArtisansData();
   }
 
-  // Convert selected period to DateTime range
+  Future<void> fetchArtisansData() async {
+    setState(() {
+      isLoading = true;
+      error = null;
+    });
+
+    try {
+      List<Map<String, dynamic>> newArtisans = [];
+      DateTimeRange? dateRange = getPeriodDateRange();
+
+      if (selectedCategory == "All") {
+        // Handle "All" category case
+        Query query = FirebaseFirestore.instance
+            .collection('users')
+            .where('user type', isEqualTo: 'Artisan');
+
+        if (selectedCountry != "All") {
+          query = query.where('country', isEqualTo: selectedCountry);
+        }
+
+        QuerySnapshot usersSnapshot = await query.get();
+        
+        for (var userDoc in usersSnapshot.docs) {
+          await processArtisanDocument(userDoc, newArtisans, dateRange);
+        }
+      } else {
+        // Handle specific category case
+        QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
+            .collection('jobs')
+            .where('job type', isEqualTo: selectedCategory)
+            .get();
+
+        List<String> artisanIds = jobSnapshot.docs
+            .map((doc) => doc['user id'] as String)
+            .toList();
+
+        // Process artisans in batches of 30
+        for (int i = 0; i < artisanIds.length; i += 30) {
+          final batchIds = artisanIds.sublist(
+            i, 
+            i + 30 > artisanIds.length ? artisanIds.length : i + 30
+          );
+
+          Query query = FirebaseFirestore.instance
+              .collection('users')
+              .where(FieldPath.documentId, whereIn: batchIds)
+              .where('user type', isEqualTo: 'Artisan');
+
+          if (selectedCountry != "All") {
+            query = query.where('country', isEqualTo: selectedCountry);
+          }
+
+          QuerySnapshot batchSnapshot = await query.get();
+          
+          for (var userDoc in batchSnapshot.docs) {
+            await processArtisanDocument(userDoc, newArtisans, dateRange);
+          }
+        }
+      }
+
+      // Sort the artisans
+      sortArtisans(newArtisans);
+
+      setState(() {
+        artisans = newArtisans;
+        isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        error = 'Error fetching data: ${e.toString()}';
+        isLoading = false;
+      });
+    }
+  }
+
+  Future<void> processArtisanDocument(
+    DocumentSnapshot userDoc,
+    List<Map<String, dynamic>> artisansList,
+    DateTimeRange? dateRange
+  ) async {
+    var artisanId = userDoc.id;
+    var artisanData = userDoc.data() as Map<String, dynamic>;
+
+    // Build calls query
+    Query callsQuery = FirebaseFirestore.instance
+        .collection('calls')
+        .where('receiverId', isEqualTo: artisanId);
+
+    QuerySnapshot callsSnapshot = await callsQuery.get();
+    
+    if (callsSnapshot.docs.isNotEmpty) {
+      // Filter calls based on date range if specified
+      List<Timestamp> callDates = callsSnapshot.docs
+          .map((doc) => doc.get('sentAt') as Timestamp)
+          .where((timestamp) => dateRange == null || 
+              _isDateInRange(timestamp.toDate(), dateRange))
+          .toList();
+
+      if (callDates.isNotEmpty) {
+        artisansList.add({
+          'name': artisanData['fullName'] ?? 'Unknown',
+          'calls': callDates.length,
+          'category': artisanData['category'] ?? 'Unknown',
+          'country': artisanData['country'] ?? 'Unknown',
+          'callDates': callDates,
+        });
+      }
+    }
+  }
+
+  // Rest of the existing helper methods remain the same
   DateTimeRange? getPeriodDateRange() {
     final now = DateTime.now();
     switch (selectedPeriod) {
@@ -60,158 +170,17 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           end: now,
         );
       default:
-        return null; // "All Time" case
+        return null;
     }
   }
 
-  // A global variable to store the raw fetched data in memory
-List<Map<String, dynamic>> cachedArtisans = [];
-
-Future<void> fetchArtisansData() async {
-  setState(() {
-    isLoading = true;
-    error = null;
-  });
-
-  try {
-    // If the data has already been fetched, apply the local filter
-    if (cachedArtisans.isNotEmpty) {
-      // Apply the filter locally
-      List<Map<String, dynamic>> filteredArtisans = _filterArtisans(
-        category: selectedCategory,
-        country: selectedCountry,
-        period: getPeriodDateRange(), // Apply the period filter
-      );
-      sortArtisans(filteredArtisans);
-      setState(() {
-        artisans = filteredArtisans;
-        isLoading = false;
-      });
-      return;
-    }
-
-    // Base query to fetch all artisans once from Firestore
-    QuerySnapshot usersSnapshot = await FirebaseFirestore.instance
-        .collection('users')
-        .where('user type', isEqualTo: 'Artisan')
-        .get();
-
-    List<Map<String, dynamic>> newArtisans = [];
-
-    // Get date range for period filtering
-    DateTimeRange? dateRange = getPeriodDateRange();
-
-    for (var userDoc in usersSnapshot.docs) {
-  var artisanId = userDoc.id;
-  var artisanData = userDoc.data() as Map<String, dynamic>;
-
-  // Build calls query
-  Query callsQuery = FirebaseFirestore.instance
-      .collection('calls')
-      .where('receiverId', isEqualTo: artisanId);
-
-  QuerySnapshot callsSnapshot = await callsQuery.get();
-  
-  if(callsSnapshot.docs.isNotEmpty) {
-    // Get all call dates for this artisan
-    List<Timestamp> callDates = callsSnapshot.docs
-        .map((doc) => doc.get('sentAt') as Timestamp)
-        .toList();
-
-    newArtisans.add({
-      'name': artisanData['fullName'] ?? 'Unknown',
-      'calls': callsSnapshot.docs.length,
-      'category': artisanData['category'] ?? 'Unknown',
-      'country': artisanData['country'] ?? 'Unknown',
-      'callDates': callDates, // Store all call dates
-    });
+  bool _isDateInRange(DateTime date, DateTimeRange range) {
+    DateTime startDate = DateTime(range.start.year, range.start.month, range.start.day);
+    DateTime endDate = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59);
+    DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+    return normalizedDate.compareTo(startDate) >= 0 && 
+           normalizedDate.compareTo(endDate) <= 0;
   }
-}
-
-    // Cache the full data
-    cachedArtisans = newArtisans;
-
-    // Apply the local filter to the fetched data
-    List<Map<String, dynamic>> filteredArtisans = _filterArtisans(
-      category: selectedCategory,
-      country: selectedCountry,
-      period: dateRange, // Apply the period filter here too
-    );
-    sortArtisans(filteredArtisans);
-    setState(() {
-      artisans = filteredArtisans;
-      isLoading = false;
-    });
-  } catch (e) {
-    setState(() {
-      error = 'Error fetching data: ${e.toString()}';
-      isLoading = false;
-    });
-  }
-}
-
-// A helper function to filter the cached artisans based on the selected category, country, and period
-List<Map<String, dynamic>> _filterArtisans({
-  required String category,
-  required String country,
-  DateTimeRange? period,
-}) {
-  return cachedArtisans.where((artisan) {
-    bool matchesCategory = category == "All" || artisan['category'] == category;
-    bool matchesCountry = country == "All" || artisan['country'] == country;
-    
-    // Count calls within period and check if any exist
-    int matchingCalls = 0;
-    if (period != null && artisan['callDates'] != null) {
-      matchingCalls = (artisan['callDates'] as List<Timestamp>)
-          .where((timestamp) => _isDateInRange(timestamp.toDate(), period))
-          .length;
-    } else {
-      matchingCalls = artisan['calls']; // Use total calls if no period filter
-    }
-
-    bool matchesPeriod = period == null || matchingCalls > 0;
-
-    // Update the calls count in the artisan map
-    if (matchesPeriod) {
-      artisan['calls'] = matchingCalls;
-    }
-
-    // Debug prints
-    print('Artisan: ${artisan['name']}');
-    print('Matching Calls in Period: $matchingCalls');
-    print('Matches Category: $matchesCategory (Category: $category)');
-    print('Matches Country: $matchesCountry (Country: $country)');
-    print('Matches Period: $matchesPeriod (Period: $period)');
-
-    return matchesCategory && matchesCountry && matchesPeriod && matchingCalls > 0;
-  }).toList();
-}
-
-bool _isDateInRange(DateTime date, DateTimeRange range) {
-  // Normalize to midnight for both start and end dates to ignore the time
-  DateTime startDate = DateTime(range.start.year, range.start.month, range.start.day);
-  DateTime endDate = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59);
-  
-  // Normalize the input date to local midnight
-  DateTime normalizedDate = DateTime(date.year, date.month, date.day);
-  
-  // Debug prints
-  print('Input date being checked: $date');
-  print('Normalized date: $normalizedDate');
-  print('Start date of range: $startDate');
-  print('End date of range: $endDate');
-  
-  bool result = normalizedDate.compareTo(startDate) >= 0 && 
-                normalizedDate.compareTo(endDate) <= 0;
-  
-  print('Comparison result: $result');
-  
-  return result;
-}
-
-
-
 
   void sortArtisans(List<Map<String, dynamic>> data) {
     switch (selectedSort) {
