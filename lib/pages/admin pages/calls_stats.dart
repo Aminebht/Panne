@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:panne_auto/componant/spinning_img.dart';
+
 
 class CallsStatsPage extends StatefulWidget {
   @override
@@ -100,32 +102,31 @@ Future<void> fetchArtisansData() async {
     DateTimeRange? dateRange = getPeriodDateRange();
 
     for (var userDoc in usersSnapshot.docs) {
-      var artisanId = userDoc.id;
-      var artisanData = userDoc.data() as Map<String, dynamic>;
+  var artisanId = userDoc.id;
+  var artisanData = userDoc.data() as Map<String, dynamic>;
 
-      // Build calls query
-      Query callsQuery = FirebaseFirestore.instance
-          .collection('calls')
-          .where('receiverId', isEqualTo: artisanId);
+  // Build calls query
+  Query callsQuery = FirebaseFirestore.instance
+      .collection('calls')
+      .where('receiverId', isEqualTo: artisanId);
 
-      // Apply date range filter if specified
-      if (dateRange != null) {
-        callsQuery = callsQuery
-            .where('timestamp', isGreaterThanOrEqualTo: dateRange.start)
-            .where('timestamp', isLessThanOrEqualTo: dateRange.end);
-      }
+  QuerySnapshot callsSnapshot = await callsQuery.get();
+  
+  if(callsSnapshot.docs.isNotEmpty) {
+    // Get all call dates for this artisan
+    List<Timestamp> callDates = callsSnapshot.docs
+        .map((doc) => doc.get('sentAt') as Timestamp)
+        .toList();
 
-      QuerySnapshot callsSnapshot = await callsQuery.get();
-      if(callsSnapshot.docs.length!=0)
-      {newArtisans.add({
-        'name': artisanData['fullName'] ?? 'Unknown',
-        'calls': callsSnapshot.docs.length,
-        'category': artisanData['category'] ?? 'Unknown',
-        'country': artisanData['country'] ?? 'Unknown',
-        'timestamp': artisanData['timestamp'], // Store the timestamp as well
-      });
-      }
-    }
+    newArtisans.add({
+      'name': artisanData['fullName'] ?? 'Unknown',
+      'calls': callsSnapshot.docs.length,
+      'category': artisanData['category'] ?? 'Unknown',
+      'country': artisanData['country'] ?? 'Unknown',
+      'callDates': callDates, // Store all call dates
+    });
+  }
+}
 
     // Cache the full data
     cachedArtisans = newArtisans;
@@ -158,13 +159,58 @@ List<Map<String, dynamic>> _filterArtisans({
   return cachedArtisans.where((artisan) {
     bool matchesCategory = category == "All" || artisan['category'] == category;
     bool matchesCountry = country == "All" || artisan['country'] == country;
-    bool matchesPeriod = period == null ||
-        (artisan['timestamp'] as Timestamp).toDate().isAfter(period.start) &&
-        (artisan['timestamp'] as Timestamp).toDate().isBefore(period.end);
+    
+    // Count calls within period and check if any exist
+    int matchingCalls = 0;
+    if (period != null && artisan['callDates'] != null) {
+      matchingCalls = (artisan['callDates'] as List<Timestamp>)
+          .where((timestamp) => _isDateInRange(timestamp.toDate(), period))
+          .length;
+    } else {
+      matchingCalls = artisan['calls']; // Use total calls if no period filter
+    }
 
-    return matchesCategory && matchesCountry && matchesPeriod;
+    bool matchesPeriod = period == null || matchingCalls > 0;
+
+    // Update the calls count in the artisan map
+    if (matchesPeriod) {
+      artisan['calls'] = matchingCalls;
+    }
+
+    // Debug prints
+    print('Artisan: ${artisan['name']}');
+    print('Matching Calls in Period: $matchingCalls');
+    print('Matches Category: $matchesCategory (Category: $category)');
+    print('Matches Country: $matchesCountry (Country: $country)');
+    print('Matches Period: $matchesPeriod (Period: $period)');
+
+    return matchesCategory && matchesCountry && matchesPeriod && matchingCalls > 0;
   }).toList();
 }
+
+bool _isDateInRange(DateTime date, DateTimeRange range) {
+  // Normalize to midnight for both start and end dates to ignore the time
+  DateTime startDate = DateTime(range.start.year, range.start.month, range.start.day);
+  DateTime endDate = DateTime(range.end.year, range.end.month, range.end.day, 23, 59, 59);
+  
+  // Normalize the input date to local midnight
+  DateTime normalizedDate = DateTime(date.year, date.month, date.day);
+  
+  // Debug prints
+  print('Input date being checked: $date');
+  print('Normalized date: $normalizedDate');
+  print('Start date of range: $startDate');
+  print('End date of range: $endDate');
+  
+  bool result = normalizedDate.compareTo(startDate) >= 0 && 
+                normalizedDate.compareTo(endDate) <= 0;
+  
+  print('Comparison result: $result');
+  
+  return result;
+}
+
+
 
 
   void sortArtisans(List<Map<String, dynamic>> data) {
@@ -207,7 +253,7 @@ List<Map<String, dynamic>> _filterArtisans({
                 _buildSort(),
                 const SizedBox(height: 15),
                 if (isLoading)
-                  const CircularProgressIndicator()
+                  SpinningImage()
                 else if (error != null)
                   Text(error!, style: TextStyle(color: Colors.red))
                 else if (artisans.isEmpty)
