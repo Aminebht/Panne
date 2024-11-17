@@ -341,7 +341,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           ),
           // Choose Country Section
           Text("Choose Country", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 9),
+    
           _buildCountrySection(),
           const SizedBox(height: 10),
           Align(

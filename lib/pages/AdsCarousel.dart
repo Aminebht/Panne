@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:panne_auto/componant/spinning_img.dart';
@@ -15,6 +17,7 @@ class _AdsCarouselState extends State<AdsCarousel> {
   VideoPlayerController? _videoController;
   bool isNextMediaLoaded = false;
   bool isMuted = true;
+  Timer? imageTimer;
 
   @override
   void initState() {
@@ -25,6 +28,7 @@ class _AdsCarouselState extends State<AdsCarousel> {
   @override
   void dispose() {
     _videoController?.dispose();
+    imageTimer?.cancel();
     super.dispose();
   }
 
@@ -35,82 +39,80 @@ class _AdsCarouselState extends State<AdsCarousel> {
         .get();
 
     if (snapshot.exists) {
-  final data = snapshot.data();
-  if (data != null && data.containsKey('ads')) {
-    setState(() {
-      ads = (data['ads'] as List<dynamic>).map((item) {
-        final adItem = item as Map<String, dynamic>;
-        return {
-          "link": adItem['link']?.toString() ?? '',
-          "mediaType": adItem['mediaType']?.toString() ?? '',
-          "mediaUrl": adItem['mediaUrl']?.toString() ?? '',
-        };
-      }).toList();
-    });
-    preloadNextMedia();
-    showCurrentMedia();
-  }
-}
-  }
-
-  void preloadNextMedia() {
-    int nextIndex = (currentIndex + 1) % ads.length;
-    if (ads[nextIndex]['mediaType'] == 'video') {
-      // ignore: deprecated_member_use
-      _videoController = VideoPlayerController.network(ads[nextIndex]['mediaUrl']!)
-        ..initialize().then((_) {
-          setState(() {
-            isNextMediaLoaded = true;
-          });
+      final data = snapshot.data();
+      if (data != null && data.containsKey('ads')) {
+        setState(() {
+          ads = (data['ads'] as List<dynamic>).map((item) {
+            final adItem = item as Map<String, dynamic>;
+            return {
+              "link": adItem['link']?.toString() ?? '',
+              "mediaType": adItem['mediaType']?.toString() ?? '',
+              "mediaUrl": adItem['mediaUrl']?.toString() ?? '',
+            };
+          }).toList();
         });
-    } else {
-      // Image preloading: nothing required for basic preloading
-      isNextMediaLoaded = true;
+        showCurrentMedia();
+      }
     }
   }
 
   void showCurrentMedia() {
+    if (ads.isEmpty) return;
+    
     if (ads[currentIndex]['mediaType'] == 'video') {
-      // Initialize and play video
-      // ignore: deprecated_member_use
+      imageTimer?.cancel();
+      
+      _videoController?.dispose();
+      _videoController = null;
+
       _videoController = VideoPlayerController.network(ads[currentIndex]['mediaUrl']!)
         ..initialize().then((_) {
-          _videoController!.setVolume(isMuted ? 0.0 : 1.0);
-          _videoController!.play();
-          setState(() {});
-
-          // Listener to switch to the next media after the video finishes
-          _videoController!.addListener(() {
-            if (_videoController!.value.position == _videoController!.value.duration) {
-              switchToNextMedia();
-            }
-          });
+          if (mounted) {
+            setState(() {});
+            _videoController!.setVolume(isMuted ? 0.0 : 1.0);
+            _videoController!.play();
+            _videoController!.addListener(_checkVideoCompletion);
+          }
         });
     } else {
-      // Delay of 5 seconds for image display
-      Future.delayed(Duration(seconds: 5), () {
-        if (mounted && ads[currentIndex]['mediaType'] == 'image') {
+      imageTimer?.cancel();
+      imageTimer = Timer(Duration(seconds: 5), () {
+        if (mounted) {
           switchToNextMedia();
         }
       });
     }
   }
 
+  void _checkVideoCompletion() {
+    if (_videoController == null || !_videoController!.value.isInitialized) return;
+
+    final position = _videoController!.value.position;
+    final duration = _videoController!.value.duration;
+
+    if (duration.inMilliseconds - position.inMilliseconds <= 200) {
+      _videoController!.removeListener(_checkVideoCompletion);
+      switchToNextMedia();
+    }
+  }
+
   void switchToNextMedia() {
     setState(() {
       currentIndex = (currentIndex + 1) % ads.length;
-      isNextMediaLoaded = false;
     });
-    preloadNextMedia();
     showCurrentMedia();
   }
 
   Future<void> _launchURL(String url) async {
+    if (url.isEmpty) return;
+    
     final Uri uri = Uri.parse(url.startsWith('http') ? url : 'https://$url');
-    if (await canLaunchUrl(uri)) {
-      await launchUrl(uri);
-    } else {
-      throw 'Could not launch $url';
+    try {
+      if (await canLaunchUrl(uri)) {
+        await launchUrl(uri);
+      }
+    } catch (e) {
+      print('Error launching URL: $e');
     }
   }
 
@@ -124,65 +126,64 @@ class _AdsCarouselState extends State<AdsCarousel> {
   @override
   Widget build(BuildContext context) {
     if (ads.isEmpty) {
-      return Center(child: SpinningImage(),);
+      return Center(child: SpinningImage());
     }
 
     final ad = ads[currentIndex];
 
     return GestureDetector(
-  onTap: () {
-    if (ad['link'] != '' && ad['link']!.isNotEmpty) {
-      _launchURL(ad['link']!);
-    }
-  },
-  child: Container(
-    width: double.infinity,
-    height: MediaQuery.of(context).size.width * 9 / 16,
-    margin: const EdgeInsets.all(40),
-    decoration: BoxDecoration(
-      borderRadius: BorderRadius.circular(15),
-      color: Colors.white,
-    ),
-    clipBehavior: Clip.hardEdge,
-    child: Stack(
-      children: [
-        ClipRRect(
+      onTap: () {
+        if (ad['link'] != '' && ad['link']!.isNotEmpty) {
+          _launchURL(ad['link']!);
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        height: MediaQuery.of(context).size.width * 9 / 16,
+        margin: const EdgeInsets.all(40),
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(15),
-          child: ad['mediaType'] == 'image'
-              ? Image.network(
-                  ad['mediaUrl']!,
-                  fit: BoxFit.cover,
-                  loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                    if (loadingProgress == null) {
-                      return child;
-                    } else {
-                      return Center(child: SpinningImage(),);
-                    }
-                  },
-                )
-              : _videoController != null && _videoController!.value.isInitialized
-                  ? AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: VideoPlayer(_videoController!),
-                    )
-                  : Center(child: CircularProgressIndicator()),
+          color: Colors.white,
         ),
-        if (ad['mediaType'] == 'video')
-          Positioned(
-            top: 10,
-            right: 10,
-            child: IconButton(
-              icon: Icon(
-                isMuted ? Icons.volume_off : Icons.volume_up,
-                color: Colors.white,
-              ),
-              onPressed: toggleMute,
+        clipBehavior: Clip.hardEdge,
+        child: Stack(
+          children: [
+            ClipRRect(
+              borderRadius: BorderRadius.circular(15),
+              child: ad['mediaType'] == 'image'
+                  ? Image.network(
+                      ad['mediaUrl']!,
+                      fit: BoxFit.cover,
+                      loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
+                        if (loadingProgress == null) {
+                          return child;
+                        } else {
+                          return Center(child: SpinningImage());
+                        }
+                      },
+                    )
+                  : _videoController != null && _videoController!.value.isInitialized
+                      ? AspectRatio(
+                          aspectRatio: 16 / 9,
+                          child: VideoPlayer(_videoController!),
+                        )
+                      : Center(child: CircularProgressIndicator()),
             ),
-          ),
-      ],
-    ),
-  ),
-);
-
+            if (ad['mediaType'] == 'video')
+              Positioned(
+                top: 10,
+                right: 10,
+                child: IconButton(
+                  icon: Icon(
+                    isMuted ? Icons.volume_off : Icons.volume_up,
+                    color: Colors.white,
+                  ),
+                  onPressed: toggleMute,
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
   }
 }
