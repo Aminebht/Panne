@@ -9,13 +9,44 @@ class CallsStatsPage extends StatefulWidget {
 }
 
 class _CallsStatsPageState extends State<CallsStatsPage> {
+  final List<String> allCountries = [
+  'Afghanistan', 'Albania', 'Algeria', 'Andorra', 'Angola', 'Antigua and Barbuda', 'Argentina', 'Armenia', 
+  'Australia', 'Austria', 'Azerbaijan', 'Bahamas', 'Bahrain', 'Bangladesh', 'Barbados', 'Belarus', 
+  'Belgium', 'Belize', 'Benin', 'Bhutan', 'Bolivia', 'Bosnia and Herzegovina', 'Botswana', 'Brazil', 
+  'Brunei', 'Bulgaria', 'Burkina Faso', 'Burundi', 'Cabo Verde', 'Cambodia', 'Cameroon', 'Canada', 
+  'Central African Republic', 'Chad', 'Chile', 'China', 'Colombia', 'Comoros', 'Congo', 
+  'Costa Rica', 'Croatia', 'Cuba', 'Cyprus', 'Czech Republic', 'Denmark', 'Djibouti', 'Dominica', 
+  'Dominican Republic', 'East Timor', 'Ecuador', 'Egypt', 'El Salvador', 'Equatorial Guinea', 'Eritrea', 
+  'Estonia', 'Eswatini', 'Ethiopia', 'Fiji', 'Finland', 'France', 'Gabon', 'Gambia', 'Georgia', 
+  'Germany', 'Ghana', 'Greece', 'Grenada', 'Guatemala', 'Guinea', 'Guinea-Bissau', 'Guyana', 'Haiti', 
+  'Honduras', 'Hungary', 'Iceland', 'India', 'Indonesia', 'Iran', 'Iraq', 'Ireland', 'Israel', 'Italy', 
+  'Jamaica', 'Japan', 'Jordan', 'Kazakhstan', 'Kenya', 'Kiribati', 'Kuwait', 'Kyrgyzstan', 'Laos', 
+  'Latvia', 'Lebanon', 'Lesotho', 'Liberia', 'Libya', 'Liechtenstein', 'Lithuania', 'Luxembourg', 
+  'Madagascar', 'Malawi', 'Malaysia', 'Maldives', 'Mali', 'Malta', 'Marshall Islands', 'Mauritania', 
+  'Mauritius', 'Mexico', 'Micronesia', 'Moldova', 'Monaco', 'Mongolia', 'Montenegro', 'Morocco', 
+  'Mozambique', 'Myanmar', 'Namibia', 'Nauru', 'Nepal', 'Netherlands', 'New Zealand', 'Nicaragua', 
+  'Niger', 'Nigeria', 'North Korea', 'North Macedonia', 'Norway', 'Oman', 'Pakistan', 'Palau', 'Panama', 
+  'Papua New Guinea', 'Paraguay', 'Peru', 'Philippines', 'Poland', 'Portugal', 'Qatar', 'Romania', 
+  'Russia', 'Rwanda', 'Saint Kitts and Nevis', 'Saint Lucia', 'Saint Vincent and the Grenadines', 'Samoa', 
+  'San Marino', 'Sao Tome and Principe', 'Saudi Arabia', 'Senegal', 'Serbia', 'Seychelles', 
+  'Sierra Leone', 'Singapore', 'Slovakia', 'Slovenia', 'Solomon Islands', 'Somalia', 'South Africa', 
+  'South Korea', 'South Sudan', 'Spain', 'Sri Lanka', 'Sudan', 'Suriname', 'Sweden', 'Switzerland', 
+  'Syria', 'Taiwan', 'Tajikistan', 'Tanzania', 'Thailand', 'Togo', 'Tonga', 'Trinidad and Tobago', 
+  'Tunisia', 'Turkey', 'Turkmenistan', 'Tuvalu', 'Uganda', 'Ukraine', 'United Arab Emirates', 
+  'United Kingdom', 'United States', 'Uruguay', 'Uzbekistan', 'Vanuatu', 'Vatican City', 'Venezuela', 
+  'Vietnam', 'Yemen', 'Zambia', 'Zimbabwe'
+];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final String collectionName = 'settings'; // Collection name in Firestore
+  final String documentId = 'countries'; // Document ID for countries list
+  List<String> selectedCountries = [];
+  final TextEditingController _searchController = TextEditingController();
+  List<String> filteredCountries = [];
   String selectedPeriod = "All Time";
   String selectedCategory = "All";
   String selectedCountry = "All";
   String selectedSort = "descending";
-  final List<String> countries = [
-    "All", "Tunisia", "Algeria"
-  ];
+  List<String> countries = [];
   int currentPage = 1;
   int itemsPerPage = 10;
   bool isLoading = false;
@@ -26,7 +57,8 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
   @override
   void initState() {
     super.initState();
-    fetchAllArtisansData(); // Fetch data once when page loads
+    fetchAllArtisansData();
+    _loadCountries(); // Fetch data once when page loads
   }
 
  // New: Store artisan IDs by categor
@@ -311,9 +343,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           Text("Choose Country", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(height: 9),
           _buildCountrySection(),
-
           const SizedBox(height: 10),
-
           Align(
             alignment: Alignment.center,
             child: ElevatedButton(
@@ -509,114 +539,230 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
     );
   }
   Widget _buildCountrySection() {
-  return Container(
-    height: 80,
-    padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5),
-    child: Column(
-      children: [
-        Expanded(
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            itemCount: countries.length + 1, // Adding 1 for the "+" button
-            itemBuilder: (context, index) {
-              if (index == countries.length) {
-                // "+" button
-                return GestureDetector(
-                  onTap: () async {
-                    final newCountry = await _showAddCountryDialog();
-                    if (newCountry != null && newCountry.isNotEmpty) {
-                      setState(() {
-                        countries.add(newCountry);
-                      });
+  return StreamBuilder<DocumentSnapshot>(
+      stream: _firestore.collection(collectionName).doc(documentId).snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) {
+          return const Center(child: Text('Something went wrong'));
+        }
+
+        // Update local state if Firebase data changes
+        if (snapshot.hasData && snapshot.data != null) {
+          final data = snapshot.data!.data() as Map<String, dynamic>?;
+          if (data != null) {
+            selectedCountries = List<String>.from(data['countries'] ?? []);
+          }
+        }
+
+        return Container(
+          height: 80,
+          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5),
+          child: Column(
+            children: [
+              Expanded(
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal,
+                  itemCount: selectedCountries.length + 1,
+                  itemBuilder: (context, index) {
+                    if (index == selectedCountries.length) {
+                      return GestureDetector(
+                        onTap: _showAddCountryDialog,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
+                          child: Chip(
+                            label: const Text(
+                              '+',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                              ),
+                            ),
+                            backgroundColor: const Color(0xFFE29100),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                        ),
+                      );
+                    } else {
+                      final country = selectedCountries[index];
+                      final isSelected = country == selectedCountry;
+
+                      return GestureDetector(
+                        onTap: () {
+                          setState(() {
+                            selectedCountry = country;
+                          });
+                        },
+                        onLongPress: () => _showRemoveConfirmation(country),
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
+                          child: Chip(
+                            label: Text(
+                              country,
+                              style: TextStyle(
+                                color: isSelected ? Colors.white : const Color(0xFFE29100),
+                                fontSize: 15,
+                              ),
+                            ),
+                            backgroundColor: isSelected 
+                                ? const Color(0xFFE29100) 
+                                : Colors.orange.withOpacity(0),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                              side: const BorderSide(
+                                color: Color(0xFFE29100),
+                                width: 1,
+                              ),
+                            ),
+                          ),
+                        ),
+                      );
                     }
                   },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
-                    child: Chip(
-                      label: const Text(
-                        '+',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                        ),
-                      ),
-                      backgroundColor: const Color(0xFFE29100),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                    ),
-                  ),
-                );
-              } else {
-                // Regular country chips
-                final country = countries[index];
-                final isSelected = country == selectedCountry;
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+}
+Future<void> _loadCountries() async {
+    try {
+      DocumentSnapshot doc = await _firestore
+          .collection(collectionName)
+          .doc(documentId)
+          .get();
 
-                return GestureDetector(
-                  onTap: () async {
-                    setState(() {
-                      selectedCountry = country;
-                    });
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
-                    child: Chip(
-                      label: Text(
-                        country,
-                        style: TextStyle(
-                          color: isSelected ? Colors.white : const Color(0xFFE29100),
-                          fontSize: 15,
-                        ),
+        setState(() {
+          countries = List<String>.from(doc.get('countries') ?? []);
+        });
+    } catch (e) {
+      print('Error loading countries: $e');
+      // Handle error appropriately
+    }
+  }
+
+  // Update countries in Firestore
+  Future<void> _updateCountriesInFirestore(List<String> countries) async {
+    try {
+      await _firestore.collection(collectionName).doc(documentId).set({
+        'countries': countries
+      });
+    } catch (e) {
+      print('Error updating countries: $e');
+      // Handle error appropriately
+      // You might want to show a snackbar or alert to the user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error updating countries: $e')),
+      );
+    }
+  }
+
+  Future<void> _showAddCountryDialog() async {
+    await showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: const Text('Add Country'),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: _searchController,
+                      decoration: const InputDecoration(
+                        hintText: 'Type to search countries...',
+                        prefixIcon: Icon(Icons.search),
                       ),
-                      backgroundColor: isSelected ? const Color(0xFFE29100) : Colors.orange.withOpacity(0),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        side: const BorderSide(
-                          color: Color(0xFFE29100),
-                          width: 1,
-                        ),
+                      onChanged: (value) {
+                        setState(() {
+                          filteredCountries = allCountries
+                              .where((country) => 
+                                  country.toLowerCase().contains(value.toLowerCase()) &&
+                                  !selectedCountries.contains(country))
+                              .toList();
+                        });
+                      },
+                    ),
+                    const SizedBox(height: 10),
+                    Flexible(
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        itemCount: _searchController.text.isEmpty ? 0 : filteredCountries.length,
+                        itemBuilder: (context, index) {
+                          return ListTile(
+                            title: Text(filteredCountries[index]),
+                            onTap: () {
+                              if (!selectedCountries.contains(filteredCountries[index])) {
+                                Navigator.of(context).pop(filteredCountries[index]);
+                              }
+                            },
+                          );
+                        },
                       ),
                     ),
-                  ),
-                );
-              }
-            },
-          ),
-        ),
-      ],
-    ),
-  );
-}
-Future<String?> _showAddCountryDialog() async {
-  String? newCountry;
-  return await showDialog<String>(
-    context: context,
-    builder: (BuildContext context) {
-      return AlertDialog(
-        title: const Text('Enter new country'),
-        content: TextField(
-          onChanged: (value) {
-            newCountry = value;
+                  ],
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.of(context).pop(),
+                  child: const Text('Cancel'),
+                ),
+              ],
+            );
           },
-          decoration: const InputDecoration(hintText: "Country name"),
-        ),
-        actions: <Widget>[
-          TextButton(
-            child: const Text('Cancel'),
-            onPressed: () {
-              Navigator.of(context).pop();
-            },
-          ),
-          TextButton(
-            child: const Text('Add'),
-            onPressed: () {
-              Navigator.of(context).pop(newCountry);
-            },
-          ),
-        ],
-      );
-    },
-  );
-}
+        );
+      },
+    ).then((value) async {
+      if (value != null) {
+        setState(() {
+          selectedCountries.add(value);
+          _searchController.clear();
+          filteredCountries.clear();
+        });
+        // Update Firestore after adding a country
+        await _updateCountriesInFirestore(selectedCountries);
+      }
+    });
+  }
+
+  Future<void> _showRemoveConfirmation(String country) async {
+    return showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Remove Country'),
+          content: Text('Are you sure you want to remove $country?'),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              child: const Text('Remove'),
+            ),
+          ],
+        );
+      },
+    ).then((confirmed) async {
+      if (confirmed == true) {
+        setState(() {
+          selectedCountries.remove(country);
+          if (selectedCountry == country) {
+            selectedCountry = 'All';
+          }
+        });
+        // Update Firestore after removing a country
+        await _updateCountriesInFirestore(selectedCountries);
+      }
+    });
+  }
 
 }

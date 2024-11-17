@@ -106,6 +106,7 @@ class _AdvertisingPanelPageState extends State<AdvertisingPanelPage> {
   }
 
   Future<void> _initializeVideoController(int index, String videoUrl) async {
+    // ignore: deprecated_member_use
     final controller = VideoPlayerController.network(videoUrl);
     await controller.initialize();
     setState(() {
