@@ -16,85 +16,98 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
   final List<String> countries = [
     "All", "Tunisia", "Algeria"
   ];
-
-  List<Map<String, dynamic>> artisans = [];
   int currentPage = 1;
   int itemsPerPage = 10;
   bool isLoading = false;
   String? error;
-  Map<String, int> connectedArtisanCache = {};
-
+  List<Map<String, dynamic>> allArtisansData = []; // Stores complete unfiltered data
+  List<Map<String, dynamic>> filteredArtisans = []; // Stores filtered results
+  Map<String, List<String>> categoryArtisanMap = {};
   @override
   void initState() {
     super.initState();
-    fetchArtisansData();
+    fetchAllArtisansData(); // Fetch data once when page loads
   }
 
-  Future<void> fetchArtisansData() async {
+ // New: Store artisan IDs by categor
+  Future<void> fetchAllArtisansData() async {
     setState(() {
       isLoading = true;
       error = null;
     });
 
     try {
-      List<Map<String, dynamic>> newArtisans = [];
-      DateTimeRange? dateRange = getPeriodDateRange();
+      List<Map<String, dynamic>> artisansData = [];
+      
+      // First, fetch all jobs to build category mapping
+      QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
+          .collection('jobs')
+          .get();
 
-      if (selectedCategory == "All") {
-        // Handle "All" category case
-        Query query = FirebaseFirestore.instance
-            .collection('users')
-            .where('user type', isEqualTo: 'Artisan');
-
-        if (selectedCountry != "All") {
-          query = query.where('country', isEqualTo: selectedCountry);
-        }
-
-        QuerySnapshot usersSnapshot = await query.get();
+      // Build category to artisan mapping
+      for (var jobDoc in jobSnapshot.docs) {
+        String category = jobDoc['job type'];
+        String artisanId = jobDoc['user id'];
         
-        for (var userDoc in usersSnapshot.docs) {
-          await processArtisanDocument(userDoc, newArtisans, dateRange);
+        if (!categoryArtisanMap.containsKey(category)) {
+          categoryArtisanMap[category] = [];
         }
-      } else {
-        // Handle specific category case
-        QuerySnapshot jobSnapshot = await FirebaseFirestore.instance
-            .collection('jobs')
-            .where('job type', isEqualTo: selectedCategory)
-            .get();
-
-        List<String> artisanIds = jobSnapshot.docs
-            .map((doc) => doc['user id'] as String)
-            .toList();
-
-        // Process artisans in batches of 30
-        for (int i = 0; i < artisanIds.length; i += 30) {
-          final batchIds = artisanIds.sublist(
-            i, 
-            i + 30 > artisanIds.length ? artisanIds.length : i + 30
-          );
-
-          Query query = FirebaseFirestore.instance
-              .collection('users')
-              .where(FieldPath.documentId, whereIn: batchIds)
-              .where('user type', isEqualTo: 'Artisan');
-
-          if (selectedCountry != "All") {
-            query = query.where('country', isEqualTo: selectedCountry);
-          }
-
-          QuerySnapshot batchSnapshot = await query.get();
-          
-          for (var userDoc in batchSnapshot.docs) {
-            await processArtisanDocument(userDoc, newArtisans, dateRange);
-          }
+        if (!categoryArtisanMap[category]!.contains(artisanId)) {
+          categoryArtisanMap[category]!.add(artisanId);
         }
       }
 
-      // Sort the artisans
-      sortArtisans(newArtisans);
+      // Fetch all artisans
+      QuerySnapshot usersSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('user type', isEqualTo: 'Artisan')
+          .get();
+
+      // Fetch all calls
+      QuerySnapshot allCallsSnapshot = await FirebaseFirestore.instance
+          .collection('calls')
+          .get();
+
+      // Create calls map for faster lookup
+      Map<String, List<Timestamp>> callsByArtisan = {};
+      for (var callDoc in allCallsSnapshot.docs) {
+        String receiverId = callDoc['receiverId'];
+        Timestamp sentAt = callDoc['sentAt'];
+        
+        if (!callsByArtisan.containsKey(receiverId)) {
+          callsByArtisan[receiverId] = [];
+        }
+        callsByArtisan[receiverId]?.add(sentAt);
+      }
+
+      // Process artisan data
+      for (var userDoc in usersSnapshot.docs) {
+        var artisanId = userDoc.id;
+        var artisanData = userDoc.data() as Map<String, dynamic>;
+        
+        List<Timestamp> artisanCalls = callsByArtisan[artisanId] ?? [];
+
+        if (artisanCalls.isNotEmpty) {
+          // Find all categories this artisan belongs to
+          List<String> artisanCategories = categoryArtisanMap.entries
+              .where((entry) => entry.value.contains(artisanId))
+              .map((entry) => entry.key)
+              .toList();
+
+          artisansData.add({
+            'id': artisanId,
+            'name': artisanData['fullName'] ?? 'Unknown',
+            'calls': artisanCalls.length,
+            'categories': artisanCategories, // Store all categories
+            'country': artisanData['country'] ?? 'Unknown',
+            'callDates': artisanCalls,
+          });
+        }
+      }
 
       setState(() {
-        artisans = newArtisans;
+        allArtisansData = artisansData;
+        applyFilters();
         isLoading = false;
       });
     } catch (e) {
@@ -105,39 +118,52 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
     }
   }
 
-  Future<void> processArtisanDocument(
-    DocumentSnapshot userDoc,
-    List<Map<String, dynamic>> artisansList,
-    DateTimeRange? dateRange
-  ) async {
-    var artisanId = userDoc.id;
-    var artisanData = userDoc.data() as Map<String, dynamic>;
-
-    // Build calls query
-    Query callsQuery = FirebaseFirestore.instance
-        .collection('calls')
-        .where('receiverId', isEqualTo: artisanId);
-
-    QuerySnapshot callsSnapshot = await callsQuery.get();
+  void applyFilters() {
+    List<Map<String, dynamic>> filtered = List.from(allArtisansData);
     
-    if (callsSnapshot.docs.isNotEmpty) {
-      // Filter calls based on date range if specified
-      List<Timestamp> callDates = callsSnapshot.docs
-          .map((doc) => doc.get('sentAt') as Timestamp)
-          .where((timestamp) => dateRange == null || 
-              _isDateInRange(timestamp.toDate(), dateRange))
-          .toList();
-
-      if (callDates.isNotEmpty) {
-        artisansList.add({
-          'name': artisanData['fullName'] ?? 'Unknown',
-          'calls': callDates.length,
-          'category': artisanData['category'] ?? 'Unknown',
-          'country': artisanData['country'] ?? 'Unknown',
-          'callDates': callDates,
-        });
-      }
+    // Apply category filter
+    if (selectedCategory != "All") {
+      filtered = filtered.where((artisan) => 
+        (artisan['categories'] as List<String>).contains(selectedCategory)
+      ).toList();
     }
+
+    // Apply country filter
+    if (selectedCountry != "All") {
+      filtered = filtered.where((artisan) => 
+        artisan['country'] == selectedCountry
+      ).toList();
+    }
+
+    // Apply date filter
+    DateTimeRange? dateRange = getPeriodDateRange();
+    if (dateRange != null) {
+      filtered = filtered.map((artisan) {
+        List<Timestamp> filteredCalls = (artisan['callDates'] as List<Timestamp>)
+            .where((timestamp) => 
+                _isDateInRange(timestamp.toDate(), dateRange))
+            .toList();
+        
+        return {
+          ...artisan,
+          'calls': filteredCalls.length,
+          'callDates': filteredCalls,
+        };
+      }).where((artisan) => artisan['calls'] > 0).toList();
+    }
+
+    // Apply sorting
+    sortArtisans(filtered);
+
+    setState(() {
+      filteredArtisans = filtered;
+      currentPage = 1;
+    });
+  }
+
+  // Update the filter button press handler
+  void onFilterPress() {
+    applyFilters();
   }
 
   // Rest of the existing helper methods remain the same
@@ -191,7 +217,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
         data.sort((a, b) => b['calls'].compareTo(a['calls']));
         break;
       case "by alphabet":
-        data.sort((a, b) => a['name'].toString().compareTo(b['name'].toString()));
+        data.sort((a, b) => a['name'].toString().toLowerCase().compareTo(b['name'].toString().toLowerCase()));
         break;
     }
   }
@@ -199,8 +225,8 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
   @override
   Widget build(BuildContext context) {
     int start = (currentPage - 1) * itemsPerPage;
-    int end = (start + itemsPerPage) > artisans.length ? artisans.length : (start + itemsPerPage);
-    List<Map<String, dynamic>> currentArtisans = artisans.sublist(start, end);
+    int end = (start + itemsPerPage) > filteredArtisans.length ? filteredArtisans.length : (start + itemsPerPage);
+    List<Map<String, dynamic>> currentArtisans = filteredArtisans.sublist(start, end);
 
     return Scaffold(
       appBar: AppBar(
@@ -225,12 +251,12 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
                   SpinningImage()
                 else if (error != null)
                   Text(error!, style: TextStyle(color: Colors.red))
-                else if (artisans.isEmpty)
+                else if (filteredArtisans.isEmpty)
                   const Text("No data found")
                 else
                   _buildTable(currentArtisans),
                 const SizedBox(height: 15),
-                if (!isLoading && artisans.isNotEmpty)
+                if (!isLoading && filteredArtisans.isNotEmpty)
                   _buildPagination(),
                 const SizedBox(height: 20),
               ],
@@ -291,8 +317,8 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           Align(
             alignment: Alignment.center,
             child: ElevatedButton(
-              onPressed: () async {
-                await fetchArtisansData();
+              onPressed: (){
+                onFilterPress();
               },
               child: const Text("Filter", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white)),
               style: ElevatedButton.styleFrom(
@@ -409,7 +435,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
 }
 
   Widget _buildPagination() {
-    int totalPages = (artisans.length / itemsPerPage).ceil();
+    int totalPages = (filteredArtisans.length / itemsPerPage).ceil();
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
@@ -455,7 +481,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           return GestureDetector(
             onTap: () {
               onSelected(option);
-              sortArtisans(artisans);
+              sortArtisans(filteredArtisans);
             },
             child: Padding(
               padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),

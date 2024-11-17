@@ -153,6 +153,7 @@ class _HomePage_adminState extends State<HomePage_admin> {
     return Scaffold(
       body: isLoading?Center(child: SpinningImage(),):Padding(
         padding: const EdgeInsets.all(30.0),
+        child: SingleChildScrollView(
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -172,7 +173,7 @@ class _HomePage_adminState extends State<HomePage_admin> {
                 const Spacer(),
                 Container(
                   decoration: const BoxDecoration(
-                    color: Colors.orange,
+                    color: Color(0xFFE29100),
                     borderRadius: BorderRadius.all(Radius.circular(14)),
                   ),
                   child: IconButton(
@@ -311,6 +312,7 @@ class _HomePage_adminState extends State<HomePage_admin> {
               ],
             ),
           ],
+        ),
         ),
       ),
     );
