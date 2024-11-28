@@ -36,8 +36,9 @@ class _ForgotPasswordState extends State<ForgotPassword> {
       });
     }
 
+    // ignore: use_build_context_synchronously
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (context) => LoginPage()),
+      MaterialPageRoute(builder: (context) => const LoginPage()),
     );
   }
 
@@ -53,6 +54,7 @@ class _ForgotPasswordState extends State<ForgotPassword> {
     return Scaffold(
         body: SingleChildScrollView(
             child: Column(children: [
+      // ignore: sized_box_for_whitespace
       Container(
         height: size.height * 0.3 - 30,
         width: size.width,
@@ -72,24 +74,24 @@ class _ForgotPasswordState extends State<ForgotPassword> {
           decoration: InputDecoration(
             hintText: AppLocalizations.of(context)!.email,
             hintStyle: GoogleFonts.poppins(
-                color: Color(0xFF000000).withOpacity(0.4),
+                color: const Color(0xFF000000).withOpacity(0.4),
                 fontWeight: FontWeight.bold,
                 fontSize: 18),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15.0),
-              borderSide: BorderSide(
+              borderSide: const BorderSide(
                 color: Color(0xFF235A81),
                 width: 3.0,
               ),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(15.0),
-              borderSide: BorderSide(
+              borderSide: const BorderSide(
                 color: Color(0xFF235A81),
                 width: 3.0,
               ),
             ),
-            contentPadding: EdgeInsets.symmetric(
+            contentPadding: const EdgeInsets.symmetric(
                 vertical: 15.0,
                 horizontal: 16.0), // Adjust height and left spacing
             isDense: true,

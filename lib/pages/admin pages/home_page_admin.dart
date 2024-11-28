@@ -467,18 +467,21 @@ class _HomePage_adminState extends State<HomePage_admin> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
                           child: Chip(
-                            label: const Text(
-                              '+',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                              ),
-                            ),
-                            backgroundColor: const Color(0xFFE29100),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
+  padding: EdgeInsets.symmetric(horizontal: 6.0, vertical: 4),
+  label: const Text(
+    '+',
+    style: TextStyle(
+      color: Colors.white,
+      fontSize: 20,
+    ),
+  ),
+  backgroundColor: const Color(0xFFE29100),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(8),
+    side: BorderSide(color: Color(0xFFE29100), width: 1), // Change the border color here
+  ),
+),
+
                         ),
                       );
                     } else {

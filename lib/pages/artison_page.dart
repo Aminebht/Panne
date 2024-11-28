@@ -371,7 +371,7 @@ Future<void> checkFreeTrialStatus() async {
                             Scaffold.of(context).openDrawer();
                           },
                           child: Padding(
-                            padding: const EdgeInsets.only(right: 20, left: 20),
+                            padding: const EdgeInsets.only(right: 30, left: 40),
                             child: Image.asset(
                               constants.logoPath,
                               height: 50,

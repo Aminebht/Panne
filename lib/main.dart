@@ -24,7 +24,6 @@ void main() async {
   await Firebase.initializeApp();
   await MobileAds.instance.initialize();
   await deleteExpiredJobs();
-
   /// 1.1.2: set navigator key to ZegoUIKitPrebuiltCallInvitationService
   ZegoUIKitPrebuiltCallInvitationService().setNavigatorKey(navigatorKey);
 
@@ -79,6 +78,7 @@ class _MyAppState extends State<MyApp> with WidgetsBindingObserver {
     FlutterAppBadger.removeBadge();
     _initializeUser();
     WidgetsBinding.instance?.addObserver(this);
+    
   }
 
   @override

@@ -76,34 +76,103 @@ class _AdvertisingPanelPageState extends State<AdvertisingPanelPage> {
     );
   }
 
-  Future<void> _loadData() async {
-    try {
-      DocumentSnapshot doc = await FirebaseFirestore.instance
-          .collection('adsPanel')
-          .doc('advertisements')
-          .get();
+Future<void> _loadData() async {
+  try {
+    setState(() {
+      _isLoading = true;
+    });
 
-      if (doc.exists) {
-        List<dynamic> ads = doc['ads'];
+    DocumentSnapshot doc = await FirebaseFirestore.instance
+        .collection('adsPanel')
+        .doc('advertisements')
+        .get();
 
-        for (int i = 0; i < ads.length && i < 5; i++) {
-          _mediaItems[i]['url'] = ads[i]['mediaUrl'];
-          _mediaItems[i]['type'] = ads[i]['mediaType'];
-          _linkControllers[i].text = ads[i]['link'];
+    if (doc.exists) {
+      // Debug print to see the raw data
+      print("Raw document data: ${doc.data()}");
+      
+      Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+      List<dynamic> ads = data['ads'] as List<dynamic>;
+      
+      // Debug print for ads data
+      print("Ads data: $ads");
+      print("Number of ads: ${ads.length}");
 
-          if (_mediaItems[i]['type'] == 'video') {
-            _initializeVideoController(i, _mediaItems[i]['url']);
-          }
+      // Reset existing media items
+      for (int i = 0; i < _mediaItems.length; i++) {
+        if (_mediaItems[i]['controller'] != null) {
+          await _mediaItems[i]['controller']?.dispose();
+        }
+        _mediaItems[i] = {'url': null, 'type': null, 'controller': null};
+        _linkControllers[i].clear();
+      }
+
+      // Load ads from the list
+      for (int i = 0; i < ads.length && i < _mediaItems.length; i++) {
+        Map<String, dynamic> adData = ads[i] as Map<String, dynamic>;
+        
+        // Debug print for each ad
+        print("Loading ad $i: $adData");
+
+        setState(() {
+          _mediaItems[i] = {
+            'url': adData['mediaUrl'],
+            'type': adData['mediaType'],
+            'controller': null
+          };
+          _linkControllers[i].text = adData['link'] ?? '';
+        });
+
+        // Initialize video controller if it's a video
+        if (adData['mediaType'] == 'video' && adData['mediaUrl'] != null) {
+          await _initializeVideoController(i, adData['mediaUrl']);
         }
       }
-    } catch (e) {
-      print("Error loading data: $e");
     }
-
+  } catch (e, stackTrace) {
+    // Enhanced error logging
+    print("Error loading data: $e");
+    print("Stack trace: $stackTrace");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error loading media items: $e")),
+    );
+  } finally {
     setState(() {
       _isLoading = false;
     });
   }
+}
+
+// Update the save method to match the list structure
+Future<void> _saveData() async {
+  try {
+    List<Map<String, dynamic>> adsList = [];
+
+    for (int i = 0; i < _mediaItems.length; i++) {
+      if (_mediaItems[i]['url'] != null) {
+        adsList.add({
+          'mediaUrl': _mediaItems[i]['url'],
+          'mediaType': _mediaItems[i]['type'],
+          'link': _linkControllers[i].text.isNotEmpty ? _linkControllers[i].text : null,
+        });
+      }
+    }
+
+    await FirebaseFirestore.instance
+        .collection('adsPanel')
+        .doc('advertisements')
+        .set({'ads': adsList});
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Data saved successfully!")),
+    );
+  } catch (e) {
+    print("Error saving data: $e");
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text("Error saving data: $e")),
+    );
+  }
+}
 
   Future<void> _initializeVideoController(int index, String videoUrl) async {
     // ignore: deprecated_member_use
@@ -209,29 +278,6 @@ class _AdvertisingPanelPageState extends State<AdvertisingPanelPage> {
     });
   }
 
-  Future<void> _saveData() async {
-  List<Map<String, dynamic>> adData = [];
-
-  for (int i = 0; i < 5; i++) {
-    if (_mediaItems[i]['url'] != null) {
-      adData.add({
-        'mediaUrl': _mediaItems[i]['url'],
-        'mediaType': _mediaItems[i]['type'],
-        'link': _linkControllers[i].text.isNotEmpty ? _linkControllers[i].text : null, // Allow null link
-      });
-    }
-  }
-
-  await FirebaseFirestore.instance
-      .collection('adsPanel')
-      .doc('advertisements')
-      .set({'ads': adData});
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text("Data saved successfully!")),
-  );
-}
-
 
   Widget _buildMediaPreview(int index) {
     if (_mediaItems[index]['url'] == null) {
@@ -332,6 +378,7 @@ Widget build(BuildContext context) {
   return Scaffold(
     appBar: AppBar(
       title: Text("Advertising Panel"),
+      centerTitle: true,
       leading: IconButton(
         icon: Icon(Icons.arrow_back),
         onPressed: () => Navigator.of(context).pop(),

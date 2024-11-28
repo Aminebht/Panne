@@ -262,7 +262,9 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
 
     return Scaffold(
       appBar: AppBar(
+        backgroundColor: const Color(0xFFFEFEFE),
         title: const Text("Calls stats"),
+        centerTitle: true,
         leading: IconButton(
           icon: const Icon(Icons.arrow_back),
           onPressed: () => Navigator.pop(context),
@@ -272,7 +274,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
         color: Color(0xFFF3F3F3),
         child: SingleChildScrollView(
           child: Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: const EdgeInsets.all(12.0),
             child: Column(
               children: [
                 _buildFilters(),
@@ -301,7 +303,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
 
   Widget _buildFilters() {
     return Container(
-      padding: const EdgeInsets.all(23),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Color(0xFFFEFEFE),
         borderRadius: BorderRadius.circular(10),
@@ -343,7 +345,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
           Text("Choose Country", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
     
           _buildCountrySection(),
-          const SizedBox(height: 10),
+          
           Align(
             alignment: Alignment.center,
             child: ElevatedButton(
@@ -366,7 +368,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
 
   Widget _buildSort() {
     return Container(
-      padding: const EdgeInsets.all(23),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(10),
@@ -375,7 +377,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           const Text("Sort", style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 10),
+          
           Wrap(
             spacing: 9,
             children: [
@@ -556,7 +558,7 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
 
         return Container(
           height: 80,
-          padding: const EdgeInsets.symmetric(horizontal: 15.0, vertical: 5),
+          
           child: Column(
             children: [
               Expanded(
@@ -570,18 +572,20 @@ class _CallsStatsPageState extends State<CallsStatsPage> {
                         child: Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 6.0, vertical: 6),
                           child: Chip(
-                            label: const Text(
-                              '+',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 20,
-                              ),
-                            ),
-                            backgroundColor: const Color(0xFFE29100),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
+  padding: EdgeInsets.symmetric(horizontal: 6.0, vertical: 4),
+  label: const Text(
+    '+',
+    style: TextStyle(
+      color: Colors.white,
+      fontSize: 20,
+    ),
+  ),
+  backgroundColor: const Color(0xFFE29100),
+  shape: RoundedRectangleBorder(
+    borderRadius: BorderRadius.circular(8),
+    side: const BorderSide(color: Color(0xFFE29100), width: 1), // Change the border color here
+  ),
+),
                         ),
                       );
                     } else {
@@ -743,6 +747,7 @@ Future<void> _loadCountries() async {
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: const Text('Cancel'),
+              
             ),
             TextButton(
               onPressed: () => Navigator.of(context).pop(true),

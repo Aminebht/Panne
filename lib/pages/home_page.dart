@@ -371,7 +371,7 @@ class _HomePageState extends State<HomePage> {
                 children: [
                   Padding(
                     padding:
-                        const EdgeInsets.only(top: 40, left: 20, right: 20),
+                        const EdgeInsets.only(top: 40, left: 40, right: 20),
                     child: Builder(builder: (BuildContext context) {
                       return GestureDetector(
                           onTap: () {

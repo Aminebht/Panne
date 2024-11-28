@@ -65,6 +65,7 @@ class _AdsCarouselState extends State<AdsCarousel> {
       _videoController?.dispose();
       _videoController = null;
 
+      // ignore: deprecated_member_use
       _videoController = VideoPlayerController.network(ads[currentIndex]['mediaUrl']!)
         ..initialize().then((_) {
           if (mounted) {
@@ -76,7 +77,7 @@ class _AdsCarouselState extends State<AdsCarousel> {
         });
     } else {
       imageTimer?.cancel();
-      imageTimer = Timer(Duration(seconds: 5), () {
+      imageTimer = Timer(const Duration(seconds: 5), () {
         if (mounted) {
           switchToNextMedia();
         }
@@ -167,7 +168,7 @@ class _AdsCarouselState extends State<AdsCarousel> {
                           aspectRatio: 16 / 9,
                           child: VideoPlayer(_videoController!),
                         )
-                      : Center(child: CircularProgressIndicator()),
+                      : Center(child: SpinningImage()),
             ),
             if (ad['mediaType'] == 'video')
               Positioned(
